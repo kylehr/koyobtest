@@ -4,7 +4,7 @@ USER node
 WORKDIR /home/node
  
 COPY . .
-RUN npm ci
+RUN npm install
  
 ARG PORT
 EXPOSE ${PORT:-3000}
