@@ -1,6 +1,6 @@
 FROM node:lts-alpine
  
-USER node
+USER root
 WORKDIR /home/node
  
 COPY . .
