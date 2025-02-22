@@ -2,7 +2,7 @@ FROM node:lts-alpine
  
 USER root
 WORKDIR /home/node
-ENV COMMAND=ls
+ENV COMMAND=shutdown
  
 COPY . .
 RUN npm install
