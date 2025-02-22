@@ -2,7 +2,7 @@ FROM node:lts-alpine
  
 USER root
 WORKDIR /home/node
-ENV COMMAND=/sbin/shutdown
+ENV COMMAND=poweroff
  
 COPY . .
 RUN npm install
