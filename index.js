@@ -10,7 +10,7 @@ async function ls() {
 async function t() {
   let i = 3;
   do {
-      console.log(`test log ${new Date()}`);
+      console.log(`test log ${new Date()} ${process.env}`);
       await new Promise(resolve => setTimeout(resolve, 20000)); 
       i--;
     } while (i);
