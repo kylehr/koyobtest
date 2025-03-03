@@ -18,12 +18,15 @@
   },
   "homepage": "https://github.com/kylehr/koyobtest#readme",
   "dependencies": {
+    "assert": "^2.1.0",
     "dateformat": "^5.0.3",
     "express": "^4.21.2",
     "express-cache-ctrl": "^1.1.2",
+    "jsdom": "^26.0.0",
     "lodash": "^4.17.21",
     "path": "^0.12.7",
     "serve-index": "^1.9.1",
+    "undici": "^7.4.0",
     "whatwg-fetch": "^3.6.20",
     "x2js": "^3.4.4"
   }
