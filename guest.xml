@@ -1,0 +1,290 @@
+<?xml version="1.0"?>
+<graph xmlns="http://pathwaysystems.com/2013/relations/graph">
+  <object id="oid7075" sdegree="30" tdegree="1">
+    <a name="name">GuestGame</a>
+    <a name="type">bus.journey</a>
+  </object>
+  <object id="oid7079" sdegree="2" tdegree="2">
+    <a name="name">GoGuestTeacher</a>
+    <a name="type">bus.step.browse_url</a>
+  </object>
+  <object id="oid7080" sdegree="2" tdegree="2">
+    <a name="name">GoGuestGamer</a>
+    <a name="number_instances">/html/run-arg[@name="number_gamers"]</a>
+    <a name="type">bus.step.browse_url</a>
+  </object>
+  <object id="oid7081" sdegree="3" tdegree="2">
+    <a name="name">GuestTeacherPage</a>
+    <a name="type">bus.feature.web_page</a>
+    <a name="url">/app/teacher_nonMember/</a>
+  </object>
+  <object id="oid7082" sdegree="1" tdegree="2">
+    <a name="name">GuestGamerPage</a>
+    <a name="type">bus.feature.web_page</a>
+    <a name="url">/app/submit_game_code/nonMember/guest/</a>
+  </object>
+  <object id="oid7085" sdegree="1" tdegree="2">
+    <a name="click">//*[@id='getgCode_bttn']</a>
+    <a name="name">AllocateGameCode</a>
+    <a name="type">bus.step.interact</a>
+  </object>
+  <object id="oid7086" sdegree="1" tdegree="3">
+    <a name="data">string(//*[@id='displayGuestGameCodeConsole'])</a>
+    <a name="name">GameCodeIssued</a>
+    <a name="type">bus.event</a>
+  </object>
+  <object id="oid7088" sdegree="2" tdegree="2">
+    <a name="name">WaitForGameCodeIssued</a>
+    <a name="type">bus.step.wait_external</a>
+  </object>
+  <object id="oid7089" sdegree="1" tdegree="2">
+    <a name="click">//*[@id='check_gCode_input']</a>
+    <a name="enter">//external-event[@name='GameCodeIssued']</a>
+    <a name="name">EnterGameCode</a>
+    <a name="type">bus.step.interact</a>
+  </object>
+  <object id="oid7090" sdegree="2" tdegree="2">
+    <a name="name">WaitForGamers</a>
+    <a name="type">bus.step.wait_external</a>
+  </object>
+  <object id="oid7091" sdegree="1" tdegree="3">
+    <a name="count">//run-arg[@name="number_gamers"]</a>
+    <a name="name">GamersJoined</a>
+    <a name="type">bus.event</a>
+  </object>
+  <object id="oid7092" sdegree="1" tdegree="2">
+    <a name="condition">//*[@id='opening_message' and contains(text(),'Join the Game')]</a>
+    <a name="echo">//*[@id='nonMemberNameSubmit']/@style</a>
+    <a name="name">WaitForStartButton</a>
+    <a name="timeout">30000</a>
+    <a name="type">bus.step.wait</a>
+  </object>
+  <object id="oid7093" sdegree="1" tdegree="2">
+    <a name="click">//*[@id='play_bttn']</a>
+    <a name="echo">//*[@id='play_bttn']/@style</a>
+    <a name="name">StartPlay</a>
+    <a name="type">bus.step.interact</a>
+  </object>
+  <object id="oid7094" sdegree="1" tdegree="2">
+    <a name="click">//*[@id='gameRoundsID']//*[@class='deleteX']</a>
+    <a name="count">7</a>
+    <a name="echo">count(//*[@id='gameRoundsID']//*[@class='deleteX'])</a>
+    <a name="name">DeleteFirstRound</a>
+    <a name="type">bus.step.interact</a>
+  </object>
+  <object id="oid7096" sdegree="1" tdegree="2">
+    <a name="condition">contains(string(//*[@id='getgCode_bttn']), "START") and not(contains(string(//*[@id='getgCode_bttn']/@style), "display: none")) and not(contains(string(//*[@id='getgCode_bttn']/@style), "display:none"))</a>
+    <a name="echo">//*[@id='getgCode_bttn']/text()</a>
+    <a name="name">WaitForNewGame</a>
+    <a name="timeout">360000</a>
+    <a name="type">bus.step.wait</a>
+  </object>
+  <object id="oid7102" sdegree="1" tdegree="3">
+    <a name="click">//*[@id='button-0']</a>
+    <a name="name">AnswerActivityQuestion</a>
+    <a name="type">bus.step.interact</a>
+  </object>
+  <object id="oid7103" sdegree="1" tdegree="2">
+    <a name="condition">(string(//*[@class='image_labe'])='My Pets') or (contains(//*[@id='feedback-header']/@style, 'visibility: hidden'))</a>
+    <a name="name">WaitForQnOrMyPlace</a>
+    <a name="timeout">100000</a>
+    <a name="type">bus.step.wait</a>
+  </object>
+  <object id="oid7106" sdegree="0" tdegree="2">
+    <a name="name">EndGuestGamerJourney</a>
+    <a name="type">bus.step.end_journey</a>
+  </object>
+  <object id="oid7107" sdegree="0" tdegree="2">
+    <a name="name">EndGuestTeacherJourney</a>
+    <a name="type">bus.step.end_journey</a>
+  </object>
+  <object id="oid7109" sdegree="1" tdegree="2">
+    <a name="click">//*[@id='nonMember_name_id']</a>
+    <a name="enter">'test gamer name'</a>
+    <a name="name">EnterGamerName</a>
+    <a name="type">bus.step.interact</a>
+  </object>
+  <object id="oid7110" sdegree="1" tdegree="2">
+    <a name="condition">//*[@id='nonMemberNameSubmit' and (contains(@style,'display: block') or contains(@style,'display:block'))]</a>
+    <a name="name">WaitForNameInput</a>
+    <a name="timeout">120000</a>
+    <a name="type">bus.step.wait</a>
+  </object>
+  <object id="oid7111" sdegree="1" tdegree="2">
+    <a name="condition">string(//*[@id='displayGuestGameCodeConsole'])!=""</a>
+    <a name="name">WaitForGameCode</a>
+    <a name="timeout">300000</a>
+    <a name="type">bus.step.wait</a>
+  </object>
+  <object id="oid7112" sdegree="1" tdegree="2">
+    <a name="click">//*[@id='nonMemberNameSubmit']</a>
+    <a name="name">RegisterGamer</a>
+    <a name="type">bus.step.interact</a>
+  </object>
+  <object id="oid7113" sdegree="1" tdegree="2">
+    <a name="condition.old">contains(string(//*[@id='question-counter']),'questions left')</a>
+    <a name="echo">string(concat('prev_question=',//var[@name='prev_question']))</a>
+    <a name="event">gameFinished</a>
+    <a name="name">WaitForGameComplete</a>
+    <a name="set">prev_question=substring-before(//*[@id='question-counter'],' questions left')</a>
+    <a name="setvar">prev_question=substring-before(string(//*[@id='question-counter']),' questions left')</a>
+    <a name="timeout">240000</a>
+    <a name="type">bus.step.wait</a>
+  </object>
+  <object id="oid7115" sdegree="1" tdegree="2">
+    <a name="click">//*[@id='opening_message']</a>
+    <a name="name">JoinGame</a>
+    <a name="type">bus.step.interact</a>
+  </object>
+  <object id="oid7117" sdegree="1" tdegree="2">
+    <a name="condition">contains(//*[@id='feedback-header']/@style,'visibility: visible')</a>
+    <a name="condition.1">string(//var[@name='prev_question']) !='' and string(//var[@name='prev_question']) != substring-before(//*[@id='question-counter'],' questions left')</a>
+    <a name="condition.2">contains(//*[@id='finish-container'], 'you have successfully completed')</a>
+    <a name="condition.3">contains(//*, 'My Pets')</a>
+    <a name="echo">string(concat('prev_question=',//var[@name='prev_question']))</a>
+    <a name="name">WaitForMarking</a>
+    <a name="save">contains(//*[@id='feedback-header']/@style,'visibility: visible') or (string(//var[@name='prev_question']) !='' and string(//var[@name='prev_question']) != substring-before(//*[@id='question-counter'],' questions left')) or (contains(//*[@id='finish-container'], 'you have successfully completed')) or (contains(//*, 'My Pets'))</a>
+    <a name="setvar">prev_question=substring-before(string(//*[@id='question-counter']),' questions left')</a>
+    <a name="timeout">300000</a>
+    <a name="type">bus.step.wait</a>
+  </object>
+  <object id="oid7118" sdegree="2" tdegree="2">
+    <a name="condition">//*[@id='feedback-header' and contains(.,'Try again') and not(contains(@style, 'hidden'))]</a>
+    <a name="name">IsAnswerWrong</a>
+    <a name="type">bus.guard</a>
+  </object>
+  <object id="oid7119" sdegree="1" tdegree="2">
+    <a name="click">//*[contains(@id, 'button-') and not(@disabled)]</a>
+    <a name="echo">'!!!!!!!!!!!!! ClickCorrectAnswer'</a>
+    <a name="name">ClickCorrectAnswer</a>
+    <a name="type">bus.step.interact</a>
+  </object>
+  <object id="oid7120" sdegree="2" tdegree="3">
+    <a name="condition">string(//*[@class='image_labe'])='My Pets'</a>
+    <a name="name">IsMyPlace</a>
+    <a name="type">bus.guard</a>
+  </object>
+  <object id="oid7126" sdegree="1" tdegree="2">
+    <a name="click">//*[contains(@onclick,'selected_scene')]</a>
+    <a name="name">GoToMyPlacePoster</a>
+    <a name="type">bus.step.interact</a>
+  </object>
+  <object id="oid7198" sdegree="1" tdegree="2">
+    <a name="condition">contains(string(//*[@id='question-counter']),'questions left')</a>
+    <a name="name">WaitForActivity</a>
+    <a name="timeout">60000</a>
+    <a name="type">bus.step.wait</a>
+  </object>
+  <object id="oid7221" sdegree="1" tdegree="2">
+    <a name="condition">//*[@id='play_bttn' and contains(@style, 'flex') and contains(., 'Start')]</a>
+    <a name="echo">//*[@id='play_bttn']/@style</a>
+    <a name="name">WaitForStartPlayButton</a>
+    <a name="timeout">60000</a>
+    <a name="type">bus.step.wait</a>
+  </object>
+  <relation id="rid12472" source="oid7079" target="oid7081">
+    <a name="rtype">depends</a>
+  </relation>
+  <relation id="rid12474" source="oid7080" target="oid7082">
+    <a name="rtype">depends</a>
+  </relation>
+  <relation id="rid12487" source="oid7088" target="oid7086">
+    <a name="rtype">depends</a>
+  </relation>
+  <relation id="rid12496" source="oid7090" target="oid7091">
+    <a name="rtype">depends</a>
+  </relation>
+  <relation id="rid12468" source="oid7075" target="oid7079">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid12470" source="oid7075" target="oid7080">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid12486" source="oid7080" target="oid7088">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid12489" source="oid7088" target="oid7089">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid12495" source="oid7091" target="oid7092">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid12522" source="oid7079" target="oid7094">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid12523" source="oid7094" target="oid7085">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid12537" source="oid7096" target="oid7107">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid12542" source="oid7093" target="oid7096">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid12547" source="oid7089" target="oid7110">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid12548" source="oid7110" target="oid7109">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid12550" source="oid7085" target="oid7111">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid12551" source="oid7111" target="oid7086">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid12553" source="oid7112" target="oid7091">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid12554" source="oid7109" target="oid7112">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid12562" source="oid7092" target="oid7115">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid12563" source="oid7115" target="oid7113">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid12567" source="oid7102" target="oid7117">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid12569" source="oid7117" target="oid7118">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid12572" source="oid7118" target="oid7119">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid12573" source="oid7119" target="oid7103">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid12575" source="oid7103" target="oid7120">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid12586" source="oid7120" target="oid7126">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid12587" source="oid7126" target="oid7106">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid12749" source="oid7198" target="oid7102">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid12750" source="oid7113" target="oid7198">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid12837" source="oid7221" target="oid7093">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid12839" source="oid7086" target="oid7090">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid12840" source="oid7090" target="oid7221">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid12577" source="oid7120" target="oid7102">
+    <a name="rtype">then.otherwise</a>
+  </relation>
+  <relation id="rid12747" source="oid7118" target="oid7120">
+    <a name="rtype">then.otherwise</a>
+  </relation>
+</graph>

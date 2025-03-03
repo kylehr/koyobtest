@@ -2,7 +2,8 @@ FROM node:lts-alpine
  
 USER root
 WORKDIR /home/node
-ENV COMMAND=poweroff
+#ENV COMMAND=poweroff
+ENV STREAMS=CPUS
  
 COPY . .
 RUN npm install
