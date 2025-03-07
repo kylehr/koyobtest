@@ -19,7 +19,7 @@ const numCPUs = availableParallelism();
 
 let number_gamers = 1;
 let site = 'https://tableteacher.com';
-let number_sequences = 2;//process.env.STREAMS == 'CPUS' ? parseInt(numCPUs) : 1;
+let number_sequences = process.env.STREAMS == 'CPUS' ? parseInt(numCPUs) : (process.env.STREAMS ? parseInt(process.env.STREAMS) : 1);
 let number_iterations = process.env.ITERATIONS ? parseInt(process.env.ITERATIONS) : 1;
 if (cluster.isPrimary) {
   let  = log_fname = `${(new Date()).toISOString().substring(0,19).replaceAll(':', '.')}.log`;
