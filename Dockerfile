@@ -3,7 +3,7 @@ FROM node:lts-alpine
 USER root
 WORKDIR /home/node
 #ENV COMMAND=poweroff
-ENV STREAMS=2
+ENV STREAMS=3
  
 COPY . .
 RUN npm install
