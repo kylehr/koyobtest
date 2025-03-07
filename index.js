@@ -38,7 +38,13 @@ if (cluster.isPrimary) {
     worker.on('message', message => {
       console.log('receive msg');
       let stats = JSON.parse(message);
-      if (stats.logs) _.each(stats.logs, journey_step => fs.appendFileSync(log_fname, `,${number_sequences},${number_iterations},${stats.sequence_number + 1},${stats.iteration_number + 1},${journey_step[0]},${journey_step[1]},${journey_step[2]}\n`));
+      if (stats.logs) {
+        let start_time = new Date(stats.start);
+        _.each(stats.logs, journey_step => { 
+          let event_time = new Date(journey_step[2]);
+          let elapsed_time_s = (event_time - start_time) / 1000;
+          fs.appendFileSync(log_fname, `,${number_sequences},${number_iterations},${stats.sequence_number + 1},${stats.iteration_number + 1},${journey_step[0]},${journey_step[1]},${elapsed_time_s}\n`)  });
+        }
       else fs.appendFileSync(err_fname, `sequence_number=${stats.sequence_number + 1},iteration_number=${stats.iteration_number + 1} error=${stats.error} stack=${stats.stack}\n`);
       games_remaining--;
       if (games_remaining === 0) console.log('all games finished');
@@ -78,6 +84,7 @@ async function process_xml() {
   jy.set_fetch_code(fetch_code);
   jy.process_journey_xml(xml);
   let console_constructor = console.Console;
+  let start = new Date();
 
   // Run each iteration.
   for (let iteration = 0; iteration < number_iterations; iteration++) {
@@ -89,7 +96,7 @@ async function process_xml() {
       console.log(`run steps`);
       let logs = await jy.run_steps(site, parms, 'aaaaaaa', 'bbbbbbbb');
       console.log(`send success`);
-      process.send(JSON.stringify({ iteration_number: iteration, sequence_number: process.env.sequence_number, logs: logs}));
+      process.send(JSON.stringify({ iteration_number: iteration, sequence_number: process.env.sequence_number, logs: logs, start: start}));
       }
     catch (err) {
       let obj = {};
