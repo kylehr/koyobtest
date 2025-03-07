@@ -21,22 +21,25 @@ let number_gamers = 1;
 let site = 'https://tableteacher.com';
 let number_sequences = process.env.STREAMS == 'CPUS' ? parseInt(numCPUs) : 1;
 let number_iterations = process.env.ITERATIONS ? parseInt(process.env.ITERATIONS) : 1;
-
 if (cluster.isPrimary) {
   let  = log_fname = `${(new Date()).toISOString().substring(0,19).replaceAll(':', '.')}.log`;
+  let  = err_fname = `${(new Date()).toISOString().substring(0,19).replaceAll(':', '.')}.err`;
 
   console.log(`parellelism: ${number_sequences}`);
   console.log(`__dirname: ${__dirname}`);
   console.log(`Primary ${process.pid} is running.`);
   
   let games_remaining = number_sequences * number_iterations;
+  let this_sequence = 0;
 
-  for (let i = 0; i < number_sequences; i++) {
-    process.env.sequence_number = i;
+  for (; this_sequence < number_sequences; this_sequence++) {
+    process.env.sequence_number = this_sequence;
     const worker = cluster.fork();
     worker.on('message', message => {
+      console.log('receive msg');
       let stats = JSON.parse(message);
-      _.each(stats.logs, journey_step => fs.appendFileSync(log_fname, `,${number_sequences},${number_iterations},${stats.sequence_number + 1},${stats.iteration_number + 1},${journey_step[0]},${journey_step[1]},${journey_step[2]}\n`));
+      if (stats.logs) _.each(stats.logs, journey_step => fs.appendFileSync(log_fname, `,${number_sequences},${number_iterations},${stats.sequence_number + 1},${stats.iteration_number + 1},${journey_step[0]},${journey_step[1]},${journey_step[2]}\n`));
+      else fs.appendFileSync(err_fname, `sequence_number=${stats.sequence_number + 1},iteration_number=${stats.iteration_number + 1} error=${stats.error} stack=${stats.stack}\n`);
       games_remaining--;
       if (games_remaining === 0) console.log('all games finished');
     });
@@ -47,6 +50,9 @@ if (cluster.isPrimary) {
   app.use('/', serve_index(__dirname + "/"))
   app.use('/', cache.disable());
   app.use('/ls/', cache.disable());
+  app.get('/togo/', (req, res) => {
+    res.send(`games_remaining=${games_remaining} this_sequence=${this_sequence}`);
+    });
   app.get('/ls/:glob', (req, res) => {
     let glob = req.params.glob ? req.params.glob : '.*';
     const re = new RegExp(`^${glob}$`);
@@ -86,9 +92,13 @@ async function process_xml() {
       process.send(JSON.stringify({ iteration_number: iteration, sequence_number: process.env.sequence_number, logs: logs}));
       }
     catch (err) {
-      console.log(err);
+      let obj = {};
+      Error.captureStackTrace(obj);
       console.log(`send error`);
-      process.send(JSON.stringify(err.toString()));
+      let msg = JSON.stringify({ iteration_number: iteration, sequence_number: process.env.sequence_number, error: err.toString(), stack: obj.stack});
+      console.log(msg);
+      console.log(JSON.stringify(msg));
+      process.send(msg);
       }
     }
 }
