@@ -19,15 +19,15 @@ const numCPUs = availableParallelism();
 
 let number_gamers = 1;
 let site = 'https://tableteacher.com';
-let number_sequences = process.env.STREAMS == 'CPUS' ? parseInt(numCPUs) : 1;
+let number_sequences = 2;//process.env.STREAMS == 'CPUS' ? parseInt(numCPUs) : 1;
 let number_iterations = process.env.ITERATIONS ? parseInt(process.env.ITERATIONS) : 1;
 if (cluster.isPrimary) {
   let  = log_fname = `${(new Date()).toISOString().substring(0,19).replaceAll(':', '.')}.log`;
   let  = err_fname = `${(new Date()).toISOString().substring(0,19).replaceAll(':', '.')}.err`;
 
   console.log(`parellelism: ${number_sequences}`);
-  console.log(`__dirname: ${__dirname}`);
-  console.log(`Primary ${process.pid} is running.`);
+  //console.log(`__dirname: ${__dirname}`);
+  //console.log(`Primary ${process.pid} is running.`);
   
   let games_remaining = number_sequences * number_iterations;
   let this_sequence = 0;
@@ -74,7 +74,6 @@ if (cluster.isPrimary) {
     })
   } 
 else if (cluster.isWorker) {
-  console.log(`Worker ${process.pid} ${process.env.sequence_number}.`);
   process_xml()
 }
 
