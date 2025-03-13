@@ -24,6 +24,7 @@ let number_iterations = process.env.ITERATIONS ? parseInt(process.env.ITERATIONS
 if (cluster.isPrimary) {
   let  = log_fname = `${(new Date()).toISOString().substring(0,19).replaceAll(':', '.')}.log`;
   let  = err_fname = `${(new Date()).toISOString().substring(0,19).replaceAll(':', '.')}.err`;
+  let number_errors = 0;
 
   console.log(`parellelism: ${number_sequences}`);
   //console.log(`__dirname: ${__dirname}`);
@@ -45,9 +46,12 @@ if (cluster.isPrimary) {
           let elapsed_time_s = (event_time - start_time) / 1000;
           fs.appendFileSync(log_fname, `,${number_sequences},${number_iterations},${stats.sequence_number + 1},${stats.iteration_number + 1},${journey_step[0]},${journey_step[1]},${elapsed_time_s}\n`)  });
         }
-      else fs.appendFileSync(err_fname, `sequence_number=${stats.sequence_number + 1},iteration_number=${stats.iteration_number + 1} error=${stats.error} stack=${stats.stack}\n`);
+      else {
+        number_errors++;
+        fs.appendFileSync(err_fname, `sequence_number=${stats.sequence_number + 1},iteration_number=${stats.iteration_number + 1} error=${stats.error} stack=${stats.stack}\n`);
+        }
       games_remaining--;
-      if (games_remaining === 0) console.log('all games finished');
+      if (games_remaining === 0) console.log('all games finished, ${number_errors} errors');
     });
   }
 
