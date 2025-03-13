@@ -51,7 +51,7 @@ if (cluster.isPrimary) {
         fs.appendFileSync(err_fname, `sequence_number=${stats.sequence_number + 1},iteration_number=${stats.iteration_number + 1} error=${stats.error} stack=${stats.stack}\n`);
         }
       games_remaining--;
-      if (games_remaining === 0) console.log('all games finished, ${number_errors} errors');
+      if (games_remaining === 0) console.log(`all games finished, ${number_errors} errors`);
     });
   }
 
