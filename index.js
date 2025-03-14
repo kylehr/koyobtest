@@ -17,10 +17,12 @@ const fetch_code		= fs.readFileSync(fetchPkg, 'utf-8');
 
 const numCPUs = availableParallelism();
 
-let number_gamers = 1;
+let number_gamers = 20;
 let site = 'https://tableteacher.com';
 let number_sequences = process.env.STREAMS == 'CPUS' ? parseInt(numCPUs) : (process.env.STREAMS ? parseInt(process.env.STREAMS) : 1);
 let number_iterations = process.env.ITERATIONS ? parseInt(process.env.ITERATIONS) : 1;
+console.log(`number_gamers: ${number_gamers}, process.env.STREAMS: ${process.env.STREAMS}, process.env.ITERATIONS: ${process.env.ITERATIONS}, number_sequences: ${number_sequences}, number_iterations: ${number_iterations}`)
+
 if (cluster.isPrimary) {
   let  = log_fname = `${(new Date()).toISOString().substring(0,19).replaceAll(':', '.')}.log`;
   let  = err_fname = `${(new Date()).toISOString().substring(0,19).replaceAll(':', '.')}.err`;
