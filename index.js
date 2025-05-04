@@ -23,8 +23,8 @@ let number_sequences = process.env.STREAMS == 'CPUS' ? parseInt(numCPUs) : (proc
 let number_iterations = process.env.ITERATIONS ? parseInt(process.env.ITERATIONS) : 1;
 
 if (cluster.isPrimary) {
-  let  = log_fname = `${(new Date()).toISOString().substring(0,19).replaceAll(':', '.')}.log`;
-  let  = err_fname = `${(new Date()).toISOString().substring(0,19).replaceAll(':', '.')}.err`;
+  let log_fname = `${(new Date()).toISOString().substring(0,19).replaceAll(':', '.')}.log`;
+  let err_fname = `ERR.${(new Date()).toISOString().substring(0,19).replaceAll(':', '.')}.log`;
   let number_errors = 0;
 
   console.log(`number_gamers: ${number_gamers}, process.env.STREAMS: ${process.env.STREAMS}, process.env.ITERATIONS: ${process.env.ITERATIONS}, number_sequences: ${number_sequences}, number_iterations: ${number_iterations}, numCPUs: ${numCPUs}`)
@@ -39,7 +39,6 @@ if (cluster.isPrimary) {
     process.env.sequence_number = this_sequence;
     const worker = cluster.fork();
     worker.on('message', message => {
-      console.log('receive msg');
       let stats = JSON.parse(message);
       if (stats.logs) {
         let start_time = new Date(stats.start);
@@ -53,7 +52,11 @@ if (cluster.isPrimary) {
         fs.appendFileSync(err_fname, `sequence_number=${stats.sequence_number + 1},iteration_number=${stats.iteration_number + 1} error=${stats.error} stack=${stats.stack}\n`);
         }
       games_remaining--;
-      if (games_remaining === 0) console.log(`all games finished, ${number_errors} errors`);
+      console.log(`games_remaining ${games_remaining} number_errors ${number_errors}`);
+      if (games_remaining === 0) {
+        console.log(`all games finished, ${number_errors} errors, zipping logs...`);
+        zip_logs();
+        }
     });
   }
 
@@ -94,23 +97,34 @@ async function process_xml() {
   // Run each iteration.
   for (let iteration = 0; iteration < number_iterations; iteration++) {
     try {
-      console.log(`starting iteration ${iteration} of ${number_iterations}`);
+      //console.log(`starting iteration ${iteration} of ${number_iterations}`);
       let stream = fs.createWriteStream(`${__dirname}/sequence_${process.env.sequence_number + 1}_of_${number_sequences}_iteration_${iteration + 1}_of_${number_iterations}.log`, {flags:'a'});
       let file_console = new console_constructor(stream, stream);
       global.console = file_console;
-      console.log(`run steps`);
+      //console.log(`run steps`);
       let logs = await jy.run_steps(site, parms, 'aaaaaaa', 'bbbbbbbb');
-      console.log(`send success`);
+      //console.log(`send success`);
       process.send(JSON.stringify({ iteration_number: iteration, sequence_number: process.env.sequence_number, logs: logs, start: start}));
       }
     catch (err) {
       let obj = {};
       Error.captureStackTrace(obj);
-      console.log(`send error`);
+      //console.log(`send error`);
       let msg = JSON.stringify({ iteration_number: iteration, sequence_number: process.env.sequence_number, error: err.toString(), stack: obj.stack});
-      console.log(msg);
-      console.log(JSON.stringify(msg));
+      //console.log(msg);
+      //console.log(JSON.stringify(msg));
       process.send(msg);
       }
     }
-}
+  }
+  
+function zip_logs() {
+  zip = new zl.Zip();
+  fs.readdirSync('.').forEach(fname => {
+    if (fname.slice(-4) == ".log") {
+      console.log(`zipping ${fname}`);
+      zip.addFile(`./${fname}`);
+      }
+    });
+  zip.archive("./logs.zip").then(function () { console.log("zip file created"); }, function (err) { console.log(err); });
+  }

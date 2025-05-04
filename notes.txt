@@ -1,0 +1,5 @@
+turn off socket stuff
+try multiple clients
+fix colour bug
+add processors
+add code to zip up all log files to download
