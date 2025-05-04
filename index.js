@@ -18,7 +18,7 @@ const fetch_code		= fs.readFileSync(fetchPkg, 'utf-8');
 const numCPUs = availableParallelism();
 
 let number_gamers = 20;
-let site = 'https://tableteacher.com';
+let site = 'https://premier-janot-mathready-d26aed83.koyeb.app';
 let number_sequences = process.env.STREAMS == 'CPUS' ? parseInt(numCPUs) : (process.env.STREAMS ? parseInt(process.env.STREAMS) : 1);
 let number_iterations = process.env.ITERATIONS ? parseInt(process.env.ITERATIONS) : 1;
 
