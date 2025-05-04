@@ -219,6 +219,7 @@ async function start_journey({ site, browse_object, journey_number, globals, eve
     { log	: (...args) => { console.log(`log journey ${journey_number}  ${date_f()}`, ...args)}
     , error	: (...args) => { console.log(`log journey ${journey_number}  ${date_f()}`); console.log(...args)}
     });
+  console.log(`navigating to ${url}`);
   JSDOM.fromURL(url, jsdom_options(resources, virtualConsole))//, { beforeParse(window) { 
     ////console.log(`############# set fetch up.`);
     //window.eval(fetch_code);
@@ -302,6 +303,15 @@ async function do_bus_step_interact(step, journey_context) {
   let count = select_number(step.attrs.count, 1, journey_context);
   let element = null;
   let debug = null;
+  if (step.attrs.setvar) {
+    let name_and_expression = step.attrs.setvar.split(/=(.*)/);
+    let name = name_and_expression[0].trim();
+    let expression = name_and_expression[1];
+    //console.log(`setting ${name} to ${expression}`);
+    journey_context.vars[name] = dom_string(journey_context.dom_f(), expression, journey_context);
+    journey_context.dirty = true;
+    echo(journey_context, step, step.attrs.echo);
+    }
   let click_fn = async () => {
     await await_dom_elt(step.attrs.click, journey_context, 3000, `could not find ${step.name} journey ${journey_context.journey_number} click element `);
     let document = journey_context.document_f();
@@ -441,7 +451,7 @@ function insert_data(journey_context) {
   _.each(_.toPairs(journey_context.globals), pair => { 
     let name = pair[0];
     let value = pair[1];
-    let el = dom_elt(dom, `/html/run-arg[@id=name]`, journey_context);
+    let el = dom_elt(dom, `/html/run-arg[@id='${name}']`, journey_context);
     if (!el) {
       el = dom.window.document.createElement('run-arg');
       el.setAttribute("name", name);
@@ -450,15 +460,15 @@ function insert_data(journey_context) {
       html_elt.appendChild(el);
       }
     else {
-      assert(elt.childNodes.length == 1, "only one child node for run-arg");
-      elt.childNodes[0].nodeValue = value;
+      assert(el.childNodes.length == 1, "only one child node for run-arg");
+      el.childNodes[0].nodeValue = value;
       }
     });
   // Add the external event values to the root node.
   _.each(_.toPairs(journey_context.event_data), pair => { 
     let name = pair[0];
     let value = pair[1];
-    let el = dom_elt(dom, `/html/external-event[@id=name]`, journey_context);
+    let el = dom_elt(dom, `/html/external-event[@id='${name}']`, journey_context);
     if (!el) {
       el = dom.window.document.createElement('external-event');
       el.setAttribute("name", name);
@@ -467,8 +477,8 @@ function insert_data(journey_context) {
       html_elt.appendChild(el);
       }
     else {
-      assert(elt.childNodes.length == 1, "only one child node for external-event");
-      elt.childNodes[0].nodeValue = value;
+      assert(el.childNodes.length == 1, "only one child node for external-event");
+      el.childNodes[0].nodeValue = value;
       }
     });
   // Add the journey vars.
@@ -476,7 +486,7 @@ function insert_data(journey_context) {
   _.each(_.toPairs(journey_context.vars), pair => { 
     let name = pair[0];
     let value = pair[1];
-    let el = dom_elt(dom, `/html/run-var[@id=name]`, journey_context);
+    let el = dom_elt(dom, `/html/run-var[@id='${name}']`, journey_context);
     if (!el) {
       el = dom.window.document.createElement("run-var");
       el.setAttribute("name", name);
@@ -485,8 +495,8 @@ function insert_data(journey_context) {
       html_elt.appendChild(el);
       }
     else {
-      assert(elt.childNodes.length == 1, "only one child node for run-var");
-      elt.childNodes[0].nodeValue = value;
+      assert(el.childNodes.length == 1, "only one child node for run-var");
+      el.childNodes[0].nodeValue = value;
       }
     });
   journey_context.dirty = false;

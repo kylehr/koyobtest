@@ -16,12 +16,12 @@
   <object id="oid7081" sdegree="3" tdegree="2">
     <a name="name">GuestTeacherPage</a>
     <a name="type">bus.feature.web_page</a>
-    <a name="url">/app/teacher_nonMember/</a>
+    <a name="url">/app/teacher_nonMember_v2/</a>
   </object>
   <object id="oid7082" sdegree="1" tdegree="2">
     <a name="name">GuestGamerPage</a>
     <a name="type">bus.feature.web_page</a>
-    <a name="url">/app/submit_game_code/nonMember/guest/</a>
+    <a name="url">/app/submit_game_code_v2/nonMember/guest/</a>
   </object>
   <object id="oid7085" sdegree="1" tdegree="2">
     <a name="click">//*[@id='getgCode_bttn']</a>
@@ -73,7 +73,7 @@
     <a name="type">bus.step.interact</a>
   </object>
   <object id="oid7096" sdegree="1" tdegree="2">
-    <a name="condition">contains(string(//*[@id='getgCode_bttn']), "START") and not(contains(string(//*[@id='getgCode_bttn']/@style), "display: none")) and not(contains(string(//*[@id='getgCode_bttn']/@style), "display:none"))</a>
+    <a name="condition">contains(string(//*[@id='getgCode_bttn']), "Start") and not(contains(string(//*[@id='getgCode_bttn']/@style), "display: none")) and not(contains(string(//*[@id='getgCode_bttn']/@style), "display:none"))</a>
     <a name="echo">//*[@id='getgCode_bttn']/text()</a>
     <a name="name">WaitForNewGame</a>
     <a name="timeout">360000</a>
@@ -82,6 +82,7 @@
   <object id="oid7102" sdegree="1" tdegree="3">
     <a name="click">//*[@id='button-0']</a>
     <a name="name">AnswerActivityQuestion</a>
+    <a name="setvar">question_counter=string(//*[@id='question-counter'])</a>
     <a name="type">bus.step.interact</a>
   </object>
   <object id="oid7103" sdegree="1" tdegree="2">
@@ -138,14 +139,14 @@
   </object>
   <object id="oid7117" sdegree="1" tdegree="2">
     <a name="condition">contains(//*[@id='feedback-header']/@style,'visibility: visible')</a>
-    <a name="condition.1">string(//var[@name='prev_question']) !='' and string(//var[@name='prev_question']) != substring-before(//*[@id='question-counter'],' questions left')</a>
+    <a name="condition.1">string(//var[@name='question_counter']) != string(//*[@id='question-counter'])</a>
     <a name="condition.2">contains(//*[@id='finish-container'], 'you have successfully completed')</a>
     <a name="condition.3">contains(//*, 'My Pets')</a>
     <a name="echo">string(concat('prev_question=',//var[@name='prev_question']))</a>
     <a name="name">WaitForMarking</a>
     <a name="save">contains(//*[@id='feedback-header']/@style,'visibility: visible') or (string(//var[@name='prev_question']) !='' and string(//var[@name='prev_question']) != substring-before(//*[@id='question-counter'],' questions left')) or (contains(//*[@id='finish-container'], 'you have successfully completed')) or (contains(//*, 'My Pets'))</a>
     <a name="setvar">prev_question=substring-before(string(//*[@id='question-counter']),' questions left')</a>
-    <a name="timeout">300000</a>
+    <a name="timeout">60000</a>
     <a name="type">bus.step.wait</a>
   </object>
   <object id="oid7118" sdegree="2" tdegree="2">
@@ -179,7 +180,7 @@
     <a name="condition">//*[@id='play_bttn' and contains(@style, 'flex') and contains(., 'Start')]</a>
     <a name="echo">//*[@id='play_bttn']/@style</a>
     <a name="name">WaitForStartPlayButton</a>
-    <a name="timeout">60000</a>
+    <a name="timeout">50000</a>
     <a name="type">bus.step.wait</a>
   </object>
   <relation id="rid12472" source="oid7079" target="oid7081">
