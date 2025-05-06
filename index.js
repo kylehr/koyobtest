@@ -15,14 +15,18 @@ const fetchPkg			= 'node_modules/whatwg-fetch/dist/fetch.umd.js';
 const fs			= require('fs');
 const fetch_code		= fs.readFileSync(fetchPkg, 'utf-8');
 
-const numCPUs = availableParallelism();
+const zl			= require("zip-lib");
+
+const numCPUs = process.env.NUM_CPUS || availableParallelism();
 
 let number_gamers = 20;
-let site = 'https://premier-janot-mathready-d26aed83.koyeb.app';
-let number_sequences = process.env.STREAMS == 'CPUS' ? parseInt(numCPUs) : (process.env.STREAMS ? parseInt(process.env.STREAMS) : 1);
+let site = 'http://localhost:5000';
+//let site = 'https://premier-janot-mathready-d26aed83.koyeb.app';
+let number_sequences = (process.env.STREAMS ? parseInt(process.env.STREAMS) : 1);
 let number_iterations = process.env.ITERATIONS ? parseInt(process.env.ITERATIONS) : 1;
 
 if (cluster.isPrimary) {
+  if (process.env.TIMEOUT) setTimeout( () => zip_logs('./timeout.zip'), parseInt(process.env.TIMEOUT)  )
   let log_fname = `${(new Date()).toISOString().substring(0,19).replaceAll(':', '.')}.log`;
   let err_fname = `ERR.${(new Date()).toISOString().substring(0,19).replaceAll(':', '.')}.log`;
   let number_errors = 0;
@@ -41,6 +45,7 @@ if (cluster.isPrimary) {
     worker.on('message', message => {
       let stats = JSON.parse(message);
       if (stats.logs) {
+        console.log(`success message`);
         let start_time = new Date(stats.start);
         _.each(stats.logs, journey_step => { 
           let event_time = new Date(journey_step[2]);
@@ -48,6 +53,7 @@ if (cluster.isPrimary) {
           fs.appendFileSync(log_fname, `,${number_sequences},${number_iterations},${stats.sequence_number + 1},${stats.iteration_number + 1},${journey_step[0]},${journey_step[1]},${elapsed_time_s}\n`)  });
         }
       else {
+        console.log(`error  message`);
         number_errors++;
         fs.appendFileSync(err_fname, `sequence_number=${stats.sequence_number + 1},iteration_number=${stats.iteration_number + 1} error=${stats.error} stack=${stats.stack}\n`);
         }
@@ -98,27 +104,31 @@ async function process_xml() {
   for (let iteration = 0; iteration < number_iterations; iteration++) {
     try {
       //console.log(`starting iteration ${iteration} of ${number_iterations}`);
-      let stream = fs.createWriteStream(`${__dirname}/sequence_${process.env.sequence_number + 1}_of_${number_sequences}_iteration_${iteration + 1}_of_${number_iterations}.log`, {flags:'a'});
+      let sequence_number = parseInt(process.env.sequence_number);
+      let stream = fs.createWriteStream(`${__dirname}/sequence_${sequence_number + 1}_of_${number_sequences}_iteration_${iteration + 1}_of_${number_iterations}.log`, {flags:'a'});
       let file_console = new console_constructor(stream, stream);
       global.console = file_console;
       //console.log(`run steps`);
-      let logs = await jy.run_steps(site, parms, 'aaaaaaa', 'bbbbbbbb');
-      //console.log(`send success`);
-      process.send(JSON.stringify({ iteration_number: iteration, sequence_number: process.env.sequence_number, logs: logs, start: start}));
+      jy.run_steps(site, parms, `stream ${sequence_number + 1}`, 'iteraction ${iteration + 1}')
+      .then(logs => {
+        process.send(JSON.stringify({ iteration_number: iteration + 1, sequence_number: sequence_number + 1, logs: logs, start: start}));
+        })
+      .catch(err => process.send(mk_error_message(err, iteration + 1, sequence_number + 1)));
       }
     catch (err) {
-      let obj = {};
-      Error.captureStackTrace(obj);
-      //console.log(`send error`);
-      let msg = JSON.stringify({ iteration_number: iteration, sequence_number: process.env.sequence_number, error: err.toString(), stack: obj.stack});
-      //console.log(msg);
-      //console.log(JSON.stringify(msg));
-      process.send(msg);
+      process.send(mk_error_message(err, iteration + 1, sequence_number + 1));
       }
     }
   }
+
+function mk_error_message(error, iteration_number, sequence_number) {
+  let obj = {};
+  Error.captureStackTrace(obj);
+  let msg = JSON.stringify({ iteration_number, sequence_number, error: error.toString(), stack: obj.stack});
+  return msg;
+  }
   
-function zip_logs() {
+function zip_logs(zip_name = "./logs.zip") {
   zip = new zl.Zip();
   fs.readdirSync('.').forEach(fname => {
     if (fname.slice(-4) == ".log") {
@@ -126,5 +136,5 @@ function zip_logs() {
       zip.addFile(`./${fname}`);
       }
     });
-  zip.archive("./logs.zip").then(function () { console.log("zip file created"); }, function (err) { console.log(err); });
+  zip.archive(zip_name).then(function () { console.log(`zip file ${zip_name} created`); }, function (err) { console.log(err); });
   }

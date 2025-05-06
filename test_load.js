@@ -45,12 +45,15 @@ function root_oid () { return exported.root_oid; }
 
 async function run_steps (site, parms, request_id, log_stream_id) {
   console.log(`run steps ${request_id}`);
-  let event_promises = {};
-  let event_data = {};
-  let vConsoles = [];
-  let event_log = [];
-  let globals = {}
-  let dom = new JSDOM(`<!DOCTYPE html>hello`); // DOM for setitng global values.
+  let resolve_result	= null;
+  let reject_result	= null;
+  let result		= new Promise((resolve, reject) => { resolve_result = resolve; reject_result = reject });
+  let event_promises	= {};
+  let event_data	= {};
+  let vConsoles		= [];
+  let event_log		= [];
+  let globals		= {}
+  let dom		= new JSDOM(`<!DOCTYPE html>hello`); // DOM for setitng global values.
   await await_page_load(dom);
   let globals_context = mk_journey_context({dom, globals}); // Context for setting global values.
   _.assign(globals, parms);
@@ -62,8 +65,10 @@ async function run_steps (site, parms, request_id, log_stream_id) {
       sub_journeys.push(start_journey({site, browse_object, journey_number: sub_journeys.length, globals, event_data, event_promises, vConsoles, request_id, log_stream_id, event_log}));
       }
     });
-  await Promise.all(sub_journeys);
-  return event_log;
+  Promise.all(sub_journeys)
+  .then( () => resolve_result(event_log))
+  .catch( (err) => { console.log(`77777777777 error in run_steps`); reject_result(err) });
+  return result;
   }
 function jsdom_options (resources, virtualConsole) {
   let result = 
@@ -92,10 +97,12 @@ function jsdom_options (resources, virtualConsole) {
   }
 function mk_external_promise(label = null) {
   let resolver = undefined;
-  let promise = new Promise(function(resolve) { resolver = resolve; });
+  let rejector = undefined;
+  let promise = new Promise(function(resolve, reject) { resolver = resolve; rejector = reject; });
   let result = 
     { promise	: promise
-    , resolve	: (data) => { if (label != null) console.log(`!!!!!!!!!!!!! journey ${label} resolved`); resolver(data); }
+    , resolve	: (data)	=> { if (label != null) console.log(`!!!!!!!!!!!!! journey ${label} resolved`); resolver(data); }
+    , reject	: (error)	=> { if (label != null) console.log(`!!!!!!!!!!!!! journey ${label} rejected`); rejector(error); }
     }
   return result;
   }
@@ -249,7 +256,7 @@ async function start_journey({ site, browse_object, journey_number, globals, eve
       dom.window.close();
       //console.log(`journey_number=${journey_number} action="window closed"`);
       });
-    do_next_step(browse_object, journey_context);
+    do_next_step(browse_object, journey_context).catch( error => journey_context.journey_xpromise.reject(error));
     });
   return journey_xpromise.promise;
   }
@@ -271,13 +278,15 @@ async function do_next_step(step, journey_context, next_relp = "then") {
   let next_step = first_relp(relp);
   if (_.has(next_step.attrs, "abort")) {
     console.log(`aborting at step ${next_step.name}`)
-    do_bus_step_end_journey(next_step, journey_context);
+    await do_bus_step_end_journey(next_step, journey_context);
     }
   else {
     let next_step_fn = step_map[next_step.type]
     assert(next_step_fn, `no function for ${next_step.type}`);
     console.log(`journey ${journey_context.journey_number} step ${next_step.name} initiated at ${date_f()}`);
-    journey_context.step_xpromise.promise.then(() =>next_step_fn(next_step, journey_context));
+    journey_context.step_xpromise.promise
+    .then( () => next_step_fn(next_step, journey_context))
+    .catch( error => journey_context.journey_xpromise.reject(error));
     }
   }
 async function do_bus_guard(step, journey_context) { 
@@ -288,10 +297,10 @@ async function do_bus_guard(step, journey_context) {
   let result = dom_bool(journey_context.dom_f(),`boolean(${step.attrs.condition})`, journey_context); 
   let next_relp = result ? "then" : "then.otherwise";
   //console.log(`guard result is ${next_relp} for step ${step.name} journey ${journey_context.journey_number}`);
-  do_next_step(step, journey_context, next_relp);
+  do_next_step(step, journey_context, next_relp).catch( error => journey_context.journey_xpromise.reject(error));
   }
 async function do_empty_step(step, journey_context) {
-  do_next_step(step, journey_context);
+  do_next_step(step, journey_context).catch( error => journey_context.journey_xpromise.reject(error));
   }
 async function do_bus_step_end_journey(step, journey_context) {
   journey_context.dom_xpromise.resolve();
@@ -343,7 +352,7 @@ async function do_bus_step_interact(step, journey_context) {
       var event = new (journey_context.window_f().KeyboardEvent)("keyup"); // Fire any keyup events.
       element.dispatchEvent(event);
       }
-    do_next_step(step, journey_context); 
+    do_next_step(step, journey_context).catch( error => journey_context.journey_xpromise.reject(error)); 
     });
   }
 async function await_dom_elt(xpath, journey_context, timeout, error_message, debug) { 
@@ -415,7 +424,7 @@ async function do_bus_step_wait(step, journey_context) {
     insert_data(journey_context);
     echo(journey_context, step, step.attrs.echo);
     }
-  do_next_step(step, journey_context);
+  do_next_step(step, journey_context).catch( error => journey_context.journey_xpromise.reject(error));
   }
 async function do_bus_event(step, journey_context) { 
   console.log(`creating business event ${step.name} ${journey_context.journey_number} at ${date_f()}`)
@@ -431,7 +440,7 @@ async function do_bus_event(step, journey_context) {
     let count = select_number(step.attrs.count, 1, journey_context);
     resolveEventPromise(step.name, journey_context, 1, (data, agg) => agg ? agg + data : data, agg => agg == count);  // Count the occurences.
     }
-  do_next_step(step, journey_context);
+  do_next_step(step, journey_context).catch( error => journey_context.journey_xpromise.reject(error));
   }
 function resolveEventPromise(name, journey_context, data, aggregator = _.identity, is_complete = () => true) {
   journey_context.event_data[name] = aggregator(data, journey_context.event_data[name]);
@@ -559,7 +568,7 @@ async function do_bus_step_wait_external(step, journey_context) {
   console.log(`waiting for external step ${step.name} ${journey_context.journey_number} to be resolved. at ${date_f()}`);
   getEventPromise(journey_context, dep.name).then(data => {
     console.log(`external step ${step.name} ${journey_context.journey_number} resolved. at ${date_f()}`);
-    do_next_step(step, journey_context);
+    do_next_step(step, journey_context).catch( error => journey_context.journey_xpromise.reject(error));
      });
   }
 function getEventPromise(journey_context, name) {
