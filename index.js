@@ -45,7 +45,7 @@ if (cluster.isPrimary) {
     worker.on('message', message => {
       let stats = JSON.parse(message);
       if (stats.logs) {
-        console.log(`success message`);
+        //console.log(`success message`);
         let start_time = new Date(stats.start);
         _.each(stats.logs, journey_step => { 
           let event_time = new Date(journey_step[2]);
@@ -109,7 +109,7 @@ async function process_xml() {
       let file_console = new console_constructor(stream, stream);
       global.console = file_console;
       //console.log(`run steps`);
-      jy.run_steps(site, parms, `stream ${sequence_number + 1}`, 'iteraction ${iteration + 1}')
+      jy.run_steps(site, parms, `stream ${sequence_number + 1}`, `iteraction ${iteration + 1}`)
       .then(logs => {
         process.send(JSON.stringify({ iteration_number: iteration + 1, sequence_number: sequence_number + 1, logs: logs, start: start}));
         })

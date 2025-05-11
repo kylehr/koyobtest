@@ -157,13 +157,16 @@ function navigate_away(verb, path, journey_context) {
     console.log(`${target_url} ${JSON.stringify(body)} ${JSON.stringify(headers)}`);
     fetch(target_url, { method: 'POST', body: body, headers: headers })
       .catch(e => { 
-        let err = `?????????????????????????????????????????????????????????????? could not load ${target_url} due to ${e} journey ${journey_context.journey_number} ${journey_context.request_id} ${journey_context.log_stream_id}`;
-        console.log(err);
-        throw new Error(err);
+        let err = new Error(`?????????????????????????????????????????????????????????????? could not load ${target_url} due to ${e} journey ${journey_context.journey_number} ${journey_context.request_id} ${journey_context.log_stream_id}`);
+        console.error(err);
+        journey_context.journey_xpromise.reject(err);
+        throw err;
         })
       .then(response => { if (!response.ok) throw new Error(`Response status: ${response.status}`); return response.text(); })
       .then(text => { replace_dom(text, target_url) })
-      .catch(e => { console.log(`!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! could not load ${target_url} due to ${e}`); throw new Error('!!!!!!'); })
+      .catch(e => { 
+        console.log(`!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! could not load ${target_url} due to ${e}`); throw new Error('!!!!!!'); 
+        })
       ;
     }
   else if (verb == "get") { 
@@ -173,9 +176,10 @@ function navigate_away(verb, path, journey_context) {
     let f = () => { 
       fetch(target_url, { })
       .catch(e => { 
-        let err = `@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ could not load ${target_url} due to ${e} journey ${journey_context.journey_number} ${journey_context.request_id} ${journey_context.log_stream_id}`; 
-        console.log(err);
-        throw new Error(err);
+        let err = new Error(`@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ could not load ${target_url} due to ${e} journey ${journey_context.journey_number} ${journey_context.request_id} ${journey_context.log_stream_id}`); 
+        console.error(err);
+        journey_context.journey_xpromise.reject(err);
+        throw err;
         })
       .then(response => { console.log(`journey ${journey_context.journey_number} got ${target_url} at ${date_f()}`); return response.text(); })
       .then(text => { replace_dom(text, target_url) });
