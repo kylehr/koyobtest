@@ -53,9 +53,10 @@ if (cluster.isPrimary) {
           fs.appendFileSync(log_fname, `,${number_sequences},${number_iterations},${stats.sequence_number + 1},${stats.iteration_number + 1},${journey_step[0]},${journey_step[1]},${elapsed_time_s}\n`)  });
         }
       else {
-        console.log(`error  message`);
         number_errors++;
-        fs.appendFileSync(err_fname, `sequence_number=${stats.sequence_number + 1},iteration_number=${stats.iteration_number + 1} error=${stats.error} stack=${stats.stack}\n`);
+        let err_msg = `sequence_number=${stats.sequence_number + 1}, iteration_number=${stats.iteration_number + 1} error=${stats.error} stack=${stats.stack}\n`;
+        console.log(err_msg);
+        fs.appendFileSync(err_fname, err_msg);
         }
       games_remaining--;
       console.log(`games_remaining ${games_remaining} number_errors ${number_errors}`);

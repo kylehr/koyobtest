@@ -7,6 +7,7 @@ const
    , retry_after_fail
    , wait_until
    } = require('./dom-utils.js');
+const es = require("eventsource");
 const sx = require('./schematix.js');
 const _ = require('./node_modules/lodash');
 const fs = require('fs');
@@ -70,7 +71,7 @@ async function run_steps (site, parms, request_id, log_stream_id) {
   .catch( (err) => { console.log(`77777777777 error in run_steps`); reject_result(err) });
   return result;
   }
-function jsdom_options (resources, virtualConsole) {
+function jsdom_options (resources, virtualConsole, journey_context) {
   let result = 
     { referrer: "https://example.com/"
     , includeNodeLocations: true
@@ -115,7 +116,7 @@ function navigate_away(verb, path, journey_context) {
         // Clean up the previous dom.
         journey_context.dom_xpromise.resolve(); 
         // Start the new dom as a result of the navigation.
-        const dom = new JSDOM(text, _.assign({ url: target_url }, jsdom_options(journey_context.resources, journey_context.virtualConsole)));
+        const dom = new JSDOM(text, _.assign({ url: target_url }, jsdom_options(journey_context.resources, journey_context.virtualConsole, journey_context)));
         journey_context.dirty = true;
         _.each(session_pairs, pair => dom.window.sessionStorage.setItem(pair[0], pair[1])); // Transfer the contents of the session storage from the previous dom.
         journey_context.dom = dom;
@@ -123,14 +124,19 @@ function navigate_away(verb, path, journey_context) {
         // Get data from loaded page.
         await await_page_load(dom);
         await mandatory_wait(() => dom.window.testing_flags, 60000, `mysteriously missing testing flags`); 
+        dom.window.my_alert = (message) => { journey_context.journey_xpromise.reject(message); } // Fail with this message.
         dom.window.testing_flags.suppress_navigation = true;
         dom.window.testing_flags.suppress_sound = true;
         dom.window.testing_flags.suppress_animations = true;
         journey_context.file = dom.window.testing_flags.file;
         //console.log(`journey_context.file ${journey_context.file}`);
         let window_api_object = journey_context.window_f().testing_api;
-        if (window_api_object) window_api_object.navigate_away = (verb, path) => navigate_away(verb, path, journey_context) // Create new a new dom when a navigation event occurs.
-	  else console.warn(`WARNING ${target_url} has no testing API object`);
+        if (window_api_object) {
+          window_api_object.navigate_away = (verb, path) => navigate_away(verb, path, journey_context);
+          window_api_object.my_alert = (message) => { journey_context.journey_xpromise.reject(message); } // Fail with this message.
+          window_api_object.my_event_source = es.EventSource;
+          } // Create new a new dom when a navigation event occurs.
+	else console.warn(`WARNING ${target_url} has no testing API object`);
         await dom.window.eventPromises.functionsAvailablePromise;
 	
         // Prepare to clean this dom up on next navigation.
@@ -231,16 +237,18 @@ async function start_journey({ site, browse_object, journey_number, globals, eve
     , error	: (...args) => { console.log(`log journey ${journey_number}  ${date_f()}`); console.log(...args)}
     });
   console.log(`navigating to ${url}`);
-  JSDOM.fromURL(url, jsdom_options(resources, virtualConsole))//, { beforeParse(window) { 
+  JSDOM.fromURL(url, jsdom_options(resources, virtualConsole, {journey_xpromise}))//, { beforeParse(window) { 
     ////console.log(`############# set fetch up.`);
     //window.eval(fetch_code);
     ////retry_after_fail(() => window.eval(fetch_code), 500, 10, "new dom fetch eval"); 
     //}}) // Add fetch.
   .then(async dom => {
+    dom.window.EventSource = es.EventSource;
     let navigation_xpromise = mk_external_promise(`journey ${journey_number}`);
     let journey_context = mk_journey_context({dom, journey_number, site, path, resources, virtualConsole, journey_xpromise, globals, event_promises, event_data, request_id, log_stream_id, event_log});
     journey_xpromise = journey_context.journey_xpromise.promise;
     await await_page_load(dom);
+    dom.window.my_alert = (message) => { journey_context.journey_xpromise.reject(message); } // Fail with this message.
     //class ArgElt extends dom.window.HTMLElement { constructor() { super(); } }
     //dom.window.customElements.define("run-arg", ArgElt);
     journey_context.file = dom.window.testing_flags.file; 
@@ -250,8 +258,12 @@ async function start_journey({ site, browse_object, journey_number, globals, eve
     journey_context.window_f().testing_flags.suppress_animations = true;
     journey_context.window_f().eventPromises.resolveNavigateAwayPromise = navigation_xpromise.resolve;
     let window_api_object = journey_context.window_f().testing_api;
-    if (window_api_object) window_api_object.navigate_away = (verb, path) => navigate_away(verb, path, journey_context) // Create new a new dom when a navigation event occurs.
-      else console.warn(`WARNING ${target_url} has no testing API object`);
+    if (window_api_object) {
+      window_api_object.navigate_away = (verb, path) => navigate_away(verb, path, journey_context); // Create new a new dom when a navigation event occurs.
+      window_api_object.my_alert = (message) => journey_context.journey_xpromise.reject(message); // Fail with this message.
+      window_api_object.my_event_source = es.EventSource;
+      } // Create new a new dom when a navigation event occurs.
+    else console.warn(`WARNING ${target_url} has no testing API object`);
     journey_context.window_f().testing_api.navigate_away = (verb, path) => navigate_away(verb, path, journey_context); // Create new a new dom when a navigation event occurs.
     //console.log(`journey_number=${journey_number} url=${url} file=${dom.window.testing_flags.file}`);
     await dom.window.eventPromises.functionsAvailablePromise;
