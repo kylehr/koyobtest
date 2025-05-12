@@ -28,7 +28,7 @@ let number_iterations = process.env.ITERATIONS ? parseInt(process.env.ITERATIONS
 
 if (cluster.isPrimary) {
   console.log(`testing site ${site}`);
-  if (process.env.TIMEOUT) setTimeout( () => zip_logs('./timeout.zip'), parseInt(process.env.TIMEOUT)  )
+  if (process.env.TIMEOUT) { setTimeout( () => zip_logs('./timeout.zip'), parseInt(process.env.TIMEOUT)  ) }
   let log_fname = `${(new Date()).toISOString().substring(0,19).replaceAll(':', '.')}.log`;
   let err_fname = `ERR.${(new Date()).toISOString().substring(0,19).replaceAll(':', '.')}.log`;
   let number_errors = 0;
@@ -132,6 +132,7 @@ function mk_error_message(error, iteration_number, sequence_number) {
   }
   
 function zip_logs(zip_name = "./logs.zip") {
+  console.log(`zipping`);
   zip = new zl.Zip();
   fs.readdirSync('.').forEach(fname => {
     if (fname.slice(-4) == ".log") {
