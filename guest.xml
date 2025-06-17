@@ -16,12 +16,12 @@
   <object id="oid7081" sdegree="3" tdegree="2">
     <a name="name">GuestTeacherPage</a>
     <a name="type">bus.feature.web_page</a>
-    <a name="url">/app/teacher_nonMember_v2/</a>
+    <a name="url">/app/teacher_nonMember/</a>
   </object>
   <object id="oid7082" sdegree="1" tdegree="2">
     <a name="name">GuestGamerPage</a>
     <a name="type">bus.feature.web_page</a>
-    <a name="url">/app/submit_game_code_v2/nonMember/guest/</a>
+    <a name="url">/app/submit_game_code/nonMember/guest/</a>
   </object>
   <object id="oid7085" sdegree="1" tdegree="2">
     <a name="click">//*[@id='getgCode_bttn']</a>
