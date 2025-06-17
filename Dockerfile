@@ -3,7 +3,7 @@ FROM node:lts-alpine
 USER root
 WORKDIR /home/node
 #ENV COMMAND=poweroff
-ENV STREAMS=100 TIMEOUT=420000
+ENV SITE=https://mr-v1.fly.dev/ STREAMS=30 ITERATIONS=3 TIMEOUT=420000
  
 COPY . .
 RUN npm install
