@@ -19,12 +19,12 @@ const zl			= require("zip-lib");
 
 const numCPUs = process.env.NUM_CPUS || availableParallelism();
 
-let number_gamers = 20;
 //let site = 'http://localhost:5000';
 let site_parm = process.env.SITE;
 let site = site_parm ? site_parm : 'https://premier-janot-mathready-d26aed83.koyeb.app';
-let number_sequences = (process.env.STREAMS ? parseInt(process.env.STREAMS) : 1);
-let number_iterations = process.env.ITERATIONS ? parseInt(process.env.ITERATIONS) : 1;
+let number_sequences	= process.env.STREAMS	? parseInt(process.env.STREAMS)		: 1;
+let number_iterations	= process.env.ITERATIONS? parseInt(process.env.ITERATIONS)	: 1;
+let number_gamers	= process.env.GAMERS	? parseInt(process.env.GAMERS)		: 1;
 
 if (cluster.isPrimary) {
   console.log(`testing site ${site}`);

@@ -71,7 +71,7 @@ async function run_steps (site, parms, request_id, log_stream_id) {
   .catch( (err) => { console.log(`77777777777 error in run_steps`); reject_result(err) });
   return result;
   }
-function jsdom_options (resources, virtualConsole, journey_context) {
+function jsdom_options (resources, virtualConsole, journey_context, onerror = null, session_pairs = null) {
   let result = 
     { referrer: "https://example.com/"
     , includeNodeLocations: true
@@ -91,6 +91,8 @@ function jsdom_options (resources, virtualConsole, journey_context) {
         window.suppress_annimations_for_testing = true;
         window.suppress_faro_for_testing = true;
         window.Element.prototype.scrollBy = () => {};
+        if (onerror) window.onerror = onerror;
+        if (session_pairs) _.each(session_pairs, pair => window.sessionStorage.setItem(pair[0], pair[1])); // Transfer the contents of the session storage from the previous dom.
         }
     , virtualConsole	: virtualConsole
     };
@@ -116,9 +118,12 @@ function navigate_away(verb, path, journey_context) {
         // Clean up the previous dom.
         journey_context.dom_xpromise.resolve(); 
         // Start the new dom as a result of the navigation.
-        const dom = new JSDOM(text, _.assign({ url: target_url }, jsdom_options(journey_context.resources, journey_context.virtualConsole, journey_context)));
+        let onerror = (message, source, lineno, colno, error) => { 
+          console.log(`window.oneerror... message:${message} source:${source} lineno:${lineno} colno:${colno}`); 
+          journey_context.journey_xpromise.reject(error) ;
+          }
+        const dom = new JSDOM(text, _.assign({ url: target_url }, jsdom_options(journey_context.resources, journey_context.virtualConsole, journey_context, onerror, session_pairs)));
         journey_context.dirty = true;
-        _.each(session_pairs, pair => dom.window.sessionStorage.setItem(pair[0], pair[1])); // Transfer the contents of the session storage from the previous dom.
         journey_context.dom = dom;
 
         // Get data from loaded page.
@@ -237,7 +242,7 @@ async function start_journey({ site, browse_object, journey_number, globals, eve
     , error	: (...args) => { console.log(`log journey ${journey_number}  ${date_f()}`); console.log(...args)}
     });
   console.log(`navigating to ${url}`);
-  JSDOM.fromURL(url, jsdom_options(resources, virtualConsole, {journey_xpromise}))//, { beforeParse(window) { 
+  JSDOM.fromURL(url, jsdom_options(resources, virtualConsole, {journey_xpromise}, () => { throw new Error(`onerror not implemented`) }))//, { beforeParse(window) { 
     ////console.log(`############# set fetch up.`);
     //window.eval(fetch_code);
     ////retry_after_fail(() => window.eval(fetch_code), 500, 10, "new dom fetch eval"); 
@@ -266,6 +271,7 @@ async function start_journey({ site, browse_object, journey_number, globals, eve
     else console.warn(`WARNING ${target_url} has no testing API object`);
     journey_context.window_f().testing_api.navigate_away = (verb, path) => navigate_away(verb, path, journey_context); // Create new a new dom when a navigation event occurs.
     //console.log(`journey_number=${journey_number} url=${url} file=${dom.window.testing_flags.file}`);
+    console.log(`1111111 journey number ${journey_number} wait for promise`);
     await dom.window.eventPromises.functionsAvailablePromise;
     //console.log(`journey_number=${journey_number} functionsAvailable`);
     journey_context.dom_xpromise.promise.then(() => {
