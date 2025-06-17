@@ -52,11 +52,11 @@ if (cluster.isPrimary) {
         _.each(stats.logs, journey_step => { 
           let event_time = new Date(journey_step[2]);
           let elapsed_time_s = (event_time - start_time) / 1000;
-          fs.appendFileSync(log_fname, `,${number_sequences},${number_iterations},${stats.sequence_number + 1},${stats.iteration_number + 1},${journey_step[0]},${journey_step[1]},${elapsed_time_s}\n`)  });
+          fs.appendFileSync(log_fname, `,${number_sequences},${number_iterations},${stats.sequence_number},${stats.iteration_number},${journey_step[0]},${journey_step[1]},${elapsed_time_s}\n`)  });
         }
       else {
         number_errors++;
-        let err_msg = `sequence_number=${stats.sequence_number + 1}, iteration_number=${stats.iteration_number + 1} error=${stats.error} stack=${stats.stack}\n`;
+        let err_msg = `sequence_number=${stats.sequence_number}, iteration_number=${stats.iteration_number} error=${stats.error} stack=${stats.stack}\n`;
         console.log(err_msg);
         fs.appendFileSync(err_fname, err_msg);
         }
@@ -106,20 +106,20 @@ async function process_xml() {
   // Run each iteration.
   for (let iteration = 0; iteration < number_iterations; iteration++) {
     try {
-      //console.log(`starting iteration ${iteration} of ${number_iterations}`);
-      let sequence_number = parseInt(process.env.sequence_number);
-      let stream = fs.createWriteStream(`${__dirname}/sequence_${sequence_number + 1}_of_${number_sequences}_iteration_${iteration + 1}_of_${number_iterations}.log`, {flags:'a'});
+      let iteration_number = iteration + 1;
+      let sequence_number = parseInt(process.env.sequence_number) + 1; // Convert index to number.
+      let stream = fs.createWriteStream(`${__dirname}/sequence_${sequence_number}_of_${number_sequences}_iteration_${iteration_number}_of_${number_iterations}.log`, {flags:'a'});
       let file_console = new console_constructor(stream, stream);
       global.console = file_console;
       //console.log(`run steps`);
-      jy.run_steps(site, parms, `stream ${sequence_number + 1}`, `iteraction ${iteration + 1}`)
+      jy.run_steps(site, parms, `stream ${sequence_number}`, `iteraction ${iteration_number}`)
       .then(logs => {
-        process.send(JSON.stringify({ iteration_number: iteration + 1, sequence_number: sequence_number + 1, logs: logs, start: start}));
+        process.send(JSON.stringify({ iteration_number: iteration_number, sequence_number: sequence_number, logs: logs, start: start}));
         })
-      .catch(err => process.send(mk_error_message(err, iteration + 1, sequence_number + 1)));
+      .catch(err => process.send(mk_error_message(err, iteration_number, sequence_number)));
       }
     catch (err) {
-      process.send(mk_error_message(err, iteration + 1, sequence_number + 1));
+      process.send(mk_error_message(err, iteration_number, sequence_number));
       }
     }
   }
