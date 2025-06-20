@@ -168,8 +168,8 @@ function navigate_away(verb, path, journey_context) {
     console.log(`${target_url} ${JSON.stringify(body)} ${JSON.stringify(headers)}`);
     fetch(target_url, { method: 'POST', body: body, headers: headers })
       .catch(e => { 
+        console.error(e);
         let err = new Error(`?????????????????????????????????????????????????????????????? could not load ${target_url} due to ${e} journey ${journey_context.journey_number} ${journey_context.request_id} ${journey_context.log_stream_id}`);
-        console.error(err);
         journey_context.journey_xpromise.reject(err);
         throw err;
         })
