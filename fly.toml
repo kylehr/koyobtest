@@ -1,0 +1,25 @@
+# fly.toml app configuration file generated for mr-load-test on 2025-06-20T11:59:06+10:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'mr-load-test'
+primary_region = 'syd'
+# stop accepting new connections while existing connections drain
+#kill_signal = "SIGUSR1"
+# allow 15 minutes for all connections to finish before killing the server
+#kill_timeout = 300
+
+[build]
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 10
+  max_machines_running = 10
+  processes = ['app']
+
+[[vm]]
+  size = 'performance-4x'
