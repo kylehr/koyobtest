@@ -63,6 +63,7 @@ async function run_steps (site, parms, request_id, log_stream_id) {
     let browse_object = node(oid);
     let number_instances = select_number(browse_object.attrs.number_instances, 1, globals_context);
     for (let i = 0; i < number_instances; i++) {
+      // FIXME: shut the dom down.
       sub_journeys.push(start_journey({site, browse_object, journey_number: sub_journeys.length, globals, event_data, event_promises, vConsoles, request_id, log_stream_id, event_log}));
       }
     });
@@ -119,7 +120,8 @@ function navigate_away(verb, path, journey_context) {
         journey_context.dom_xpromise.resolve(); 
         // Start the new dom as a result of the navigation.
         let onerror = (message, source, lineno, colno, error) => { 
-          console.log(`window.oneerror... message:${message} source:${source} lineno:${lineno} colno:${colno}`); 
+          console.error(`journey ${journey_context.journey_number}`, error);
+          console.log(`window.oneerror... message:${message} source:${source} lineno:${lineno} colno:${colno}\n${journey_context.source}`); 
           journey_context.journey_xpromise.reject(error) ;
           }
         const dom = new JSDOM(text, _.assign({ url: target_url }, jsdom_options(journey_context.resources, journey_context.virtualConsole, journey_context, onerror, session_pairs)));
@@ -164,19 +166,19 @@ function navigate_away(verb, path, journey_context) {
     const headers = new Headers();
     headers.append("Content-Type", "application/x-www-form-urlencoded");
     let target_url = journey_context.site + form.getAttribute('action');
-    //fetch(target_url, { method: 'POST', body: body, headers: headers, agent: proxy_agent })
     console.log(`${target_url} ${JSON.stringify(body)} ${JSON.stringify(headers)}`);
-    fetch(target_url, { method: 'POST', body: body, headers: headers })
+    do_fetch(journey_context, target_url, { method: 'POST', body: body, headers: headers })
       .catch(e => { 
-        console.error(e);
-        let err = new Error(`?????????????????????????????????????????????????????????????? could not load ${target_url} due to ${e} journey ${journey_context.journey_number} ${journey_context.request_id} ${journey_context.log_stream_id}`);
-        journey_context.journey_xpromise.reject(err);
+        console.error(`journey ${journey_context.journey_number} POST`, e);
+        let err = new Error(`?????????????????????????????????????????????????????????????? could not POST ${target_url} due to ${e} journey ${journey_context.journey_number} ${journey_context.request_id} ${journey_context.log_stream_id}`);
+        setTimeout(() => journey_context.journey_xpromise.reject(err), 10000); // Give the consoles some time to write.
         throw err;
         })
       .then(response => { if (!response.ok) throw new Error(`Response status: ${response.status}`); return response.text(); })
-      .then(text => { replace_dom(text, target_url) })
+      .then(text => { journey_context.source = text; replace_dom(text, target_url) })
       .catch(e => { 
-        console.log(`!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! could not load ${target_url} due to ${e}`); throw new Error('!!!!!!'); 
+        console.log(`!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! could not POST ${target_url} due to ${e}`); throw new Error('!!!!!!'); 
+        console.error(`journey ${journey_context.journey_number}`, e);
         })
       ;
     }
@@ -185,15 +187,15 @@ function navigate_away(verb, path, journey_context) {
     //console.log(`GET ${target_url}`);
     //fetch(target_url, { agent: proxy_agent })
     let f = () => { 
-      fetch(target_url, { })
+      do_fetch(journey_context, target_url, { })
       .catch(e => { 
-        let err = new Error(`@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ could not load ${target_url} due to ${e} journey ${journey_context.journey_number} ${journey_context.request_id} ${journey_context.log_stream_id}`); 
-        console.error(err);
-        journey_context.journey_xpromise.reject(err);
+        console.error(`journey ${journey_context.journey_number} GET`, e);
+        let err = new Error(`@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ could not GET ${target_url} due to ${e} journey ${journey_context.journey_number} ${journey_context.request_id} ${journey_context.log_stream_id}`); 
+        setTimeout(() => journey_context.journey_xpromise.reject(err), 10000); // Give console some time to write;
         throw err;
         })
       .then(response => { console.log(`journey ${journey_context.journey_number} got ${target_url} at ${date_f()}`); return response.text(); })
-      .then(text => { replace_dom(text, target_url) });
+      .then(text => { journey_context.source = text; replace_dom(text, target_url) });
       }
       // FIXME the following code is rubish
     try { f(); } catch (e) { console.log(`11111 failed to get ${target_url}`); console.log(`22222 failed to get ${target_url}`); try { f(); } catch (e) { console.log(`33333 failed to get ${target_url}`); try { f(); } catch (e) { console.log(`4444444 failed to get ${target_url}`); try { f(); } catch (e) { console.log(`55555555 failed to get ${target_url}`); f();  } } } }
@@ -271,7 +273,7 @@ async function start_journey({ site, browse_object, journey_number, globals, eve
     else console.warn(`WARNING ${target_url} has no testing API object`);
     journey_context.window_f().testing_api.navigate_away = (verb, path) => navigate_away(verb, path, journey_context); // Create new a new dom when a navigation event occurs.
     //console.log(`journey_number=${journey_number} url=${url} file=${dom.window.testing_flags.file}`);
-    console.log(`1111111 journey number ${journey_number} wait for promise`);
+    //console.log(`1111111 journey ${journey_number} wait for promise`);
     await dom.window.eventPromises.functionsAvailablePromise;
     //console.log(`journey_number=${journey_number} functionsAvailable`);
     journey_context.dom_xpromise.promise.then(() => {
@@ -325,9 +327,9 @@ async function do_empty_step(step, journey_context) {
   do_next_step(step, journey_context).catch( error => journey_context.journey_xpromise.reject(error));
   }
 async function do_bus_step_end_journey(step, journey_context) {
-  journey_context.dom_xpromise.resolve();
   journey_context.journey_xpromise.resolve();
-  console.log(`journey ended with step ${step.name} of journey ${journey_context.journey_number}`);
+  journey_context.dom_xpromise.resolve();
+  console.log(`journey ended with step ${step.name} of journey ${journey_context.journey_number} ${date_f()}`);
   }
 async function do_bus_step_interact(step, journey_context) {
   assert(step.attrs.click, `click attribute required for interaction ${step.name}`);
@@ -625,10 +627,7 @@ function set_graph(oid) {
     set_graph(relp.target_oid);
     });
   }
-function is_step(obj) {
-  let attr = sx.attr_with_name(obj, sx.ATTR_NAME_TYPE);
-  let val = sx.attr_value(attr);
-  return val.startsWith(BUSINESS_STEP_PREFIX);
+function is_step(obj) { let attr = sx.attr_with_name(obj, sx.ATTR_NAME_TYPE); let val = sx.attr_value(attr); return val.startsWith(BUSINESS_STEP_PREFIX);
   }
 function get_next_object(obj) {
   let from_oid = sx.identity(obj);
@@ -640,3 +639,42 @@ function promiseState(p) {
 	  return Promise.race([p, t])
 	    .then(v => (v === t)? "pending" : "fulfilled", () => "rejected");
 }
+
+// Do a fetch with retries.
+function do_fetch(journey_context, url, opts, retry_timeout = 1, max_retry_timeout = 100) {
+  let resolver = undefined;
+  let rejector = undefined;
+  let result = new Promise(function(resolve, reject) { resolver = resolve; rejector = reject; });
+  console.log(`journey ${journey_context.journey_number} fetching ${retry_timeout} ${date_f()}`);
+  fetch(url, opts)
+  .then( response => { 
+    console.log(`journey ${journey_context.journey_number} fetched`); 
+    resolver(response);
+    })
+  .catch( err => {
+    console.error(`journey ${journey_context.journey_number} fetch error`);
+    console.error(`journey ${journey_context.journey_number} fetch error data ${err instanceof TypeError && err.message === 'fetch failed' && retry_timeout <= max_retry_timeout} ${err instanceof TypeError} ${err.message === 'fetch failed'} ${retry_timeout <= max_retry_timeout}`);
+    if (err instanceof TypeError && err.message === 'fetch failed' && retry_timeout <= max_retry_timeout) {
+      console.error(`journey ${journey_context.journey_number} retry after  network error for ${url}`);
+      setTimeout(() => {
+        do_fetch(journey_context, url, opts, retry_timeout * 10, max_retry_timeout)
+        .then(result => {
+          console.log(`journey ${journey_context.journey_number} fetch retry result ${result} ${JSON.stringify(result)}`); 
+          resolver(result);
+          })
+        .catch(err => rejector(err));
+        }, 
+        retry_timeout);
+      }
+    else {
+      console.error(`journey ${journey_context.journey_number} reject after network error for ${url} ${opts}`);
+      setTimeout(() => rejector(err), 10000);  // Give the virtual console some time to write the errors.
+      }
+    })
+  .catch( err => {
+    console.error(`journey ${journey_context.journey_number} fetch error handling failed`);
+    console.error(`journey ${journey_context.journey_number} do_fetch`, err);
+    setTimeout(() => rejector(err), 10000);  // Give the virtual console some time to write the errors.
+    });
+  return result;
+  }
