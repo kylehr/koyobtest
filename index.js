@@ -17,6 +17,19 @@ const fetch_code		= fs.readFileSync(fetchPkg, 'utf-8');
 
 const zl			= require("zip-lib");
 
+const { S3Client } = require("@aws-sdk/client-s3");
+const { Upload } = require("@aws-sdk/lib-storage");
+
+// Configure AWS S3 credentials and region
+const s3Client = new S3Client(
+  { region: process.env.AWS_REGION
+  , credentials: 
+    { accessKeyId: process.env.AWS_ACCESS_KEY_ID
+    , secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+    }
+  , endpoint: process.env.AWS_ENDPOINT_URL_S3
+  });
+
 const numCPUs = process.env.NUM_CPUS || availableParallelism();
 
 //let site = 'http://localhost:5000';
@@ -25,13 +38,13 @@ let site = site_parm ? site_parm : 'https://premier-janot-mathready-d26aed83.koy
 let number_sequences	= process.env.STREAMS	? parseInt(process.env.STREAMS)		: 1;
 let number_iterations	= process.env.ITERATIONS? parseInt(process.env.ITERATIONS)	: 1;
 let number_gamers	= process.env.GAMERS	? parseInt(process.env.GAMERS)		: 1;
+let number_errors = 0;
 
 if (cluster.isPrimary) {
   console.log(`testing site ${site}`);
   if (process.env.TIMEOUT) { setTimeout( () => zip_logs('./timeout.zip'), parseInt(process.env.TIMEOUT)  ) }
   let log_fname = `${(new Date()).toISOString().substring(0,19).replaceAll(':', '.')}.log`;
   let err_fname = `ERR.${(new Date()).toISOString().substring(0,19).replaceAll(':', '.')}.log`;
-  let number_errors = 0;
 
   console.log(`number_gamers: ${number_gamers}, process.env.STREAMS: ${process.env.STREAMS}, process.env.ITERATIONS: ${process.env.ITERATIONS}, number_sequences: ${number_sequences}, number_iterations: ${number_iterations}, numCPUs: ${numCPUs}`)
   console.log(`parellelism: ${number_sequences}`);
@@ -57,7 +70,7 @@ if (cluster.isPrimary) {
       else {
         number_errors++;
         let err_msg = `sequence_number=${stats.sequence_number}, iteration_number=${stats.iteration_number} error=${stats.error} stack=${stats.stack}\n`;
-        console.log(err_msg);
+        console.log("err_msg", err_msg);
         fs.appendFileSync(err_fname, err_msg);
         }
       games_remaining--;
@@ -132,7 +145,7 @@ function mk_error_message(error, iteration_number, sequence_number) {
   }
   
 function zip_logs(zip_name = "./logs.zip") {
-  console.log(`zipping`);
+  console.log(`starting zipping for ${zip_name}`);
   zip = new zl.Zip();
   fs.readdirSync('.').forEach(fname => {
     if (fname.slice(-4) == ".log") {
@@ -140,5 +153,46 @@ function zip_logs(zip_name = "./logs.zip") {
       zip.addFile(`./${fname}`);
       }
     });
-  zip.archive(zip_name).then(function () { console.log(`zip file ${zip_name} created`); }, function (err) { console.log(err); });
+  if (process.env.BUCKET_NAME) zip.archive(zip_name).then(
+    function () { 
+      console.log(`zip file ${zip_name} created`); 
+      uploadLargeFileToS3(zip_name, process.env.BUCKET_NAME, `logs-${Date.now()}-E${number_errors}-S${number_sequences}-I${number_iterations}-G${number_gamers}${zip_name.substring(2)}`)
+      .then(() => console.log(`uploaded to s3`))
+      .catch( (err) => { 
+        console.log(`could not upload to s3`); 
+        console.error(err); 
+        });
+      }, 
+    function (err) { 
+      console.log(err); 
+      }
+    );
   }
+
+async function uploadLargeFileToS3(filePath, bucketName, s3Key) {
+  const fileStream = fs.createReadStream(filePath);
+  const upload = new Upload({
+            client: s3Client,
+            params: {
+                Bucket: bucketName,
+                Key: s3Key,
+                Body: fileStream,
+            },
+            partSize: 5 * 1024 * 1024, // Optional: specify part size (e.g., 5MB)
+            queueSize: 4, // Optional: specify number of concurrent parts to upload
+        });
+
+        // Track upload progress (optional)
+        upload.on("httpUploadProgress", (progress) => {
+            console.log(`Uploaded ${progress.loaded} of ${progress.total} bytes`);
+        });
+
+        try {
+            const data = await upload.done();
+            console.log(`Large file uploaded successfully at ${data.Location}`);
+            return data;
+        } catch (err) {
+            console.error("Error uploading file:", err);
+            throw err;
+        }
+    }
