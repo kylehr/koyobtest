@@ -22,4 +22,5 @@ primary_region = 'syd'
   processes = ['app']
 
 [[vm]]
-  size = 'performance-4x'
+#  size = 'shared-cpu-2x'
+  size = 'performance-2x'
