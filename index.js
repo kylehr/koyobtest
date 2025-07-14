@@ -39,10 +39,11 @@ let number_sequences	= process.env.STREAMS	? parseInt(process.env.STREAMS)		: 1;
 let number_iterations	= process.env.ITERATIONS? parseInt(process.env.ITERATIONS)	: 1;
 let number_gamers	= process.env.GAMERS	? parseInt(process.env.GAMERS)		: 1;
 let number_errors = 0;
+let timeout = null;
 
 if (cluster.isPrimary) {
   console.log(`testing site ${site}`);
-  if (process.env.TIMEOUT) { setTimeout( () => zip_logs('./timeout.zip'), parseInt(process.env.TIMEOUT)  ) }
+  if (process.env.TIMEOUT) { timeout = setTimeout( () => zip_logs('./timeout.zip'), parseInt(process.env.TIMEOUT)  ) }
   let log_fname = `${(new Date()).toISOString().substring(0,19).replaceAll(':', '.')}.log`;
   let err_fname = `ERR.${(new Date()).toISOString().substring(0,19).replaceAll(':', '.')}.log`;
 
@@ -78,6 +79,7 @@ if (cluster.isPrimary) {
       if (games_remaining === 0) {
         console.log(`all games finished, ${number_errors} errors, zipping logs...`);
         zip_logs();
+        clearTimeout(timeout);
         }
     });
   }
