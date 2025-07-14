@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <graph xmlns="http://pathwaysystems.com/2013/relations/graph">
-  <object id="oid7075" sdegree="30" tdegree="1">
+  <object id="oid7075" sdegree="31" tdegree="1">
     <a name="name">GuestGame</a>
     <a name="type">bus.journey</a>
   </object>
@@ -51,13 +51,6 @@
     <a name="count">//run-arg[@name="number_gamers"]</a>
     <a name="name">GamersJoined</a>
     <a name="type">bus.event</a>
-  </object>
-  <object id="oid7092" sdegree="1" tdegree="2">
-    <a name="condition">//*[@id='opening_message' and contains(text(),'Join the Game')]</a>
-    <a name="echo">//*[@id='nonMemberNameSubmit']/@style</a>
-    <a name="name">WaitForStartButton</a>
-    <a name="timeout">30000</a>
-    <a name="type">bus.step.wait</a>
   </object>
   <object id="oid7093" sdegree="1" tdegree="2">
     <a name="click">//*[@id='play_bttn']</a>
@@ -132,17 +125,11 @@
     <a name="timeout">240000</a>
     <a name="type">bus.step.wait</a>
   </object>
-  <object id="oid7115" sdegree="1" tdegree="2">
-    <a name="click">//*[@id='opening_message']</a>
-    <a name="name">JoinGame</a>
-    <a name="type">bus.step.interact</a>
-  </object>
   <object id="oid7117" sdegree="1" tdegree="2">
     <a name="condition">contains(//*[@id='feedback-header']/@style,'visibility: visible')</a>
     <a name="condition.1">string(//var[@name='question_counter']) != string(//*[@id='question-counter'])</a>
     <a name="condition.2">contains(//*[@id='finish-container'], 'you have successfully completed')</a>
     <a name="condition.3">contains(//*, 'My Pets')</a>
-    <a name="echo">string(concat('prev_question=',//var[@name='prev_question']))</a>
     <a name="name">WaitForMarking</a>
     <a name="save">contains(//*[@id='feedback-header']/@style,'visibility: visible') or (string(//var[@name='prev_question']) !='' and string(//var[@name='prev_question']) != substring-before(//*[@id='question-counter'],' questions left')) or (contains(//*[@id='finish-container'], 'you have successfully completed')) or (contains(//*, 'My Pets'))</a>
     <a name="setvar">prev_question=substring-before(string(//*[@id='question-counter']),' questions left')</a>
@@ -173,7 +160,7 @@
   <object id="oid7198" sdegree="1" tdegree="2">
     <a name="condition">contains(string(//*[@id='question-counter']),'questions left')</a>
     <a name="name">WaitForActivity</a>
-    <a name="timeout">60000</a>
+    <a name="timeout">90000</a>
     <a name="type">bus.step.wait</a>
   </object>
   <object id="oid7221" sdegree="1" tdegree="2">
@@ -182,6 +169,23 @@
     <a name="name">WaitForStartPlayButton</a>
     <a name="timeout">50000</a>
     <a name="type">bus.step.wait</a>
+  </object>
+  <object id="oid7945" sdegree="1" tdegree="2">
+    <a name="condition">count(//*[@id='button-0'])</a>
+    <a name="name">WaitForGamePage</a>
+    <a name="timeout">15000</a>
+    <a name="type">bus.step.wait</a>
+  </object>
+  <object id="oid7946" sdegree="1" tdegree="2">
+    <a name="condition">//*[@id='opening_message' and contains(text(),'Join the Game')]</a>
+    <a name="name">WaitForJoinButton</a>
+    <a name="timeout">60000</a>
+    <a name="type">bus.step.wait</a>
+  </object>
+  <object id="oid7948" sdegree="1" tdegree="2">
+    <a name="click">//*[@id='opening_message']</a>
+    <a name="name">JoinGame</a>
+    <a name="type">bus.step.interact</a>
   </object>
   <relation id="rid12472" source="oid7079" target="oid7081">
     <a name="rtype">depends</a>
@@ -205,9 +209,6 @@
     <a name="rtype">then</a>
   </relation>
   <relation id="rid12489" source="oid7088" target="oid7089">
-    <a name="rtype">then</a>
-  </relation>
-  <relation id="rid12495" source="oid7091" target="oid7092">
     <a name="rtype">then</a>
   </relation>
   <relation id="rid12522" source="oid7079" target="oid7094">
@@ -234,16 +235,7 @@
   <relation id="rid12551" source="oid7111" target="oid7086">
     <a name="rtype">then</a>
   </relation>
-  <relation id="rid12553" source="oid7112" target="oid7091">
-    <a name="rtype">then</a>
-  </relation>
   <relation id="rid12554" source="oid7109" target="oid7112">
-    <a name="rtype">then</a>
-  </relation>
-  <relation id="rid12562" source="oid7092" target="oid7115">
-    <a name="rtype">then</a>
-  </relation>
-  <relation id="rid12563" source="oid7115" target="oid7113">
     <a name="rtype">then</a>
   </relation>
   <relation id="rid12567" source="oid7102" target="oid7117">
@@ -280,6 +272,21 @@
     <a name="rtype">then</a>
   </relation>
   <relation id="rid12840" source="oid7090" target="oid7221">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid14135" source="oid7945" target="oid7091">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid14136" source="oid7091" target="oid7113">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid14139" source="oid7112" target="oid7946">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid14144" source="oid7946" target="oid7948">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid14145" source="oid7948" target="oid7945">
     <a name="rtype">then</a>
   </relation>
   <relation id="rid12577" source="oid7120" target="oid7102">

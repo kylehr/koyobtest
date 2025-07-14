@@ -1,0 +1,39 @@
+performance-2x 2 servers SITE=https://mr-v1.fly.dev GAMERS=1  STREAMS=1 ITERATIONS=1 TIMEOUT=420000 TypeError: Cannot read properties of undefined (reading 'forEach')
+performance-1x 2 servers SITE=https://mr-v1.fly.dev GAMERS=10  STREAMS=1 ITERATIONS=1 TIMEOUT=420000 
+performance-1x 2 servers SITE=https://mr-v1.fly.dev GAMERS=20  STREAMS=1 ITERATIONS=1 TIMEOUT=420000 TypeError: Cannot read properties of undefined (reading 'split')
+  maybe 20 gamers is too many for performance-1x?
+performance-2x 2 servers SITE=https://mr-v1.fly.dev GAMERS=20  STREAMS=1 ITERATIONS=1 TIMEOUT=420000
+performance-2x 2 servers SITE=https://mr-v1.fly.dev GAMERS=25  STREAMS=1 ITERATIONS=1 TIMEOUT=420000
+performance-2x 2 servers SITE=https://mr-v1.fly.dev GAMERS=30  STREAMS=1 ITERATIONS=1 TIMEOUT=420000 
+performance-4x 10 servers SITE=https://mr-v1.fly.dev GAMERS=30  STREAMS=4 ITERATIONS=1 TIMEOUT=420000 wait condition timed out for step WaitForGamePage
+performance-4x 10 servers SITE=tt GAMERS=30  STREAMS=4 ITERATIONS=1 TIMEOUT=420000 
+performance-4x 20 servers SITE=tt GAMERS=30  STREAMS=4 ITERATIONS=1 TIMEOUT=420000 wait condition timed out for step WaitForGamePage journey 1
+performance-4x 15 servers SITE=tt GAMERS=30  STREAMS=4 ITERATIONS=1 TIMEOUT=420000 wait condition timed out for step WaitForGamePage journey 1
+performance-4x 13 servers SITE=tt GAMERS=30  STREAMS=4 ITERATIONS=1 TIMEOUT=420000 wait condition timed out for step WaitForGamePage journey 1
+performance-4x 10 servers SITE=tt GAMERS=30  STREAMS=4 ITERATIONS=1 TIMEOUT=420000 wait condition timed out for step WaitForGamePage journey 1
+performance-4x 2 servers SITE=tt GAMERS=30  STREAMS=4 ITERATIONS=1 TIMEOUT=420000 
+performance-4x 9 servers SITE=tt GAMERS=30  STREAMS=4 ITERATIONS=1 TIMEOUT=420000 
+performance-4x 10 servers SITE=tt GAMERS=30  STREAMS=4 ITERATIONS=1 TIMEOUT=420000 wait condition timed out for step WaitForGamePage journey 1
+performance-4x 8 servers SITE=v1 GAMERS=30  STREAMS=4 ITERATIONS=1 TIMEOUT=420000 wait condition timed out for step WaitForGamePage journey 1
+performance-4x 5 servers SITE=v1 GAMERS=30  STREAMS=4 ITERATIONS=1 TIMEOUT=420000 wait condition timed out for step WaitForGamePage journey 1
+performance-4x 3 servers SITE=v1 GAMERS=30  STREAMS=4 ITERATIONS=1 TIMEOUT=420000 
+performance-4x 4 servers SITE=v1 GAMERS=30  STREAMS=4 ITERATIONS=1 TIMEOUT=420000 wait condition timed out for step WaitForGamePage journey 1
+	2025-07-05T07:28:10Z app[0801690c215118] syd [info]https://mr-v1.fly.dev/link_casual_user_to_gameCode:1001
+	2025-07-05T07:28:10Z app[0801690c215118] syd [info]            playNodeList.forEach(playNode => { playNode.style.display = "none"; });     // turn play game elements off to stop playing as well
+	2025-07-05T07:28:10Z app[0801690c215118] syd [info]                         ^
+	2025-07-05T07:28:10Z app[0801690c215118] syd [info]TypeError: Cannot read properties of undefined (reading 'forEach')
+	2025-07-05T07:28:10Z app[0801690c215118] syd [info]    at Socket.<anonymous> (https://mr-v1.fly.dev/link_casual_user_to_gameCode:1001:26)
+	2025-07-05T07:28:10Z app[0801690c215118] syd [info]    at Emitter.emit (https://mr-v1.fly.dev/socket.io/socket.io.js:715:22)
+	2025-07-05T07:28:10Z app[0801690c215118] syd [info]    at Socket.emitEvent (https://mr-v1.fly.dev/socket.io/socket.io.js:3531:63)
+	2025-07-05T07:28:10Z app[0801690c215118] syd [info]    at Socket.onevent (https://mr-v1.fly.dev/socket.io/socket.io.js:3508:16)
+	2025-07-05T07:28:10Z app[0801690c215118] syd [info]    at Socket.onpacket (https://mr-v1.fly.dev/socket.io/socket.io.js:3476:18)
+	2025-07-05T07:28:10Z app[0801690c215118] syd [info]    at Emitter.emit (https://mr-v1.fly.dev/socket.io/socket.io.js:715:22)
+	2025-07-05T07:28:10Z app[0801690c215118] syd [info]    at https://mr-v1.fly.dev/socket.io/socket.io.js:4220:18
+	2025-07-05T07:28:10Z app[0801690c215118] syd [info]    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+changed v1 to size = 'performance-1x' from shared
+2 servers
+performance-4x 8 servers SITE=v1 GAMERS=30  STREAMS=4 ITERATIONS=1 TIMEOUT=420000 wait condition timed out for step WaitForGamePage journey 1
+performance-4x 6 servers SITE=v1 GAMERS=30  STREAMS=4 ITERATIONS=1 TIMEOUT=420000 wait condition timed out for step WaitForGamePage journey 1
+
+compare the effect of reducing the number of gamers on the realism of the performance
+performance-1x 1 servers SITE=v1 GAMERS=25  STREAMS=1 ITERATIONS=1 TIMEOUT=420000 timed out - no data
