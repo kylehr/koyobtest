@@ -69,7 +69,10 @@ async function run_steps (site, parms, request_id, log_stream_id) {
     });
   Promise.all(sub_journeys)
   .then( () => resolve_result(event_log))
-  .catch( (err) => { console.log(`77777777777 error in run_steps`); reject_result(err) });
+  .catch( (err) => { 
+    console.log(`77777777777 error in run_steps`); 
+    // FIXME: close all the windows. dom.window.close();
+    reject_result(err) });
   return result;
   }
 function jsdom_options (resources, virtualConsole, journey_context, onerror = null, session_pairs = null) {
@@ -92,6 +95,7 @@ function jsdom_options (resources, virtualConsole, journey_context, onerror = nu
         window.suppress_annimations_for_testing = true;
         window.suppress_faro_for_testing = true;
         window.Element.prototype.scrollBy = () => {};
+        window.matchMedia = () => { return { matches: false } };
         if (onerror) window.onerror = onerror;
         if (session_pairs) _.each(session_pairs, pair => window.sessionStorage.setItem(pair[0], pair[1])); // Transfer the contents of the session storage from the previous dom.
         }
@@ -126,12 +130,19 @@ function navigate_away(verb, path, journey_context) {
           }
         const dom = new JSDOM(text, _.assign({ url: target_url }, jsdom_options(journey_context.resources, journey_context.virtualConsole, journey_context, onerror, session_pairs)));
         journey_context.dirty = true;
+        //delete journey_context.dom; // seemed to cause:
+//						/home/node/test_load.js:214
+//						, window_f		: () => o.dom_f().window
+//						^
+//						Cannot read properties of undefined (reading 'window')
+//						at Object.window_f (/home/node/test_load.js:214:34)
+//						at replace_dom (/home/node/test_load.js:142:49)
         journey_context.dom = dom;
 
         // Get data from loaded page.
         await await_page_load(dom);
         await mandatory_wait(() => dom.window.testing_flags, 60000, `mysteriously missing testing flags`); 
-        dom.window.my_alert = (message) => { journey_context.journey_xpromise.reject(message); } // Fail with this message.
+        dom.window.my_alert = (message) => { console.log(`journey ${journey_context.journey_number} fail due to alert ${message}`); journey_context.journey_xpromise.reject(message); } // Fail with this message.
         dom.window.testing_flags.suppress_navigation = true;
         dom.window.testing_flags.suppress_sound = true;
         dom.window.testing_flags.suppress_animations = true;
@@ -177,7 +188,7 @@ function navigate_away(verb, path, journey_context) {
       .then(response => { if (!response.ok) throw new Error(`Response status: ${response.status}`); return response.text(); })
       .then(text => { journey_context.source = text; replace_dom(text, target_url) })
       .catch(e => { 
-        console.log(`!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! could not POST ${target_url} due to ${e}`); throw new Error('!!!!!!'); 
+        console.log(`!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! could not POST ${target_url} due to ${e} journey ${journey_context.journey_number} ${journey_context.request_id} ${journey_context.log_stream_id}`); throw new Error('!!!!!!'); 
         console.error(`journey ${journey_context.journey_number}`, e);
         })
       ;
@@ -255,7 +266,7 @@ async function start_journey({ site, browse_object, journey_number, globals, eve
     let journey_context = mk_journey_context({dom, journey_number, site, path, resources, virtualConsole, journey_xpromise, globals, event_promises, event_data, request_id, log_stream_id, event_log});
     journey_xpromise = journey_context.journey_xpromise.promise;
     await await_page_load(dom);
-    dom.window.my_alert = (message) => { journey_context.journey_xpromise.reject(message); } // Fail with this message.
+    dom.window.my_alert = (message) => { console.log(`journey ${journey_context.journey_number} fail due to alert ${message}`);; journey_context.journey_xpromise.reject(message); } // Fail with this message.
     //class ArgElt extends dom.window.HTMLElement { constructor() { super(); } }
     //dom.window.customElements.define("run-arg", ArgElt);
     journey_context.file = dom.window.testing_flags.file; 
@@ -327,6 +338,7 @@ async function do_empty_step(step, journey_context) {
   do_next_step(step, journey_context).catch( error => journey_context.journey_xpromise.reject(error));
   }
 async function do_bus_step_end_journey(step, journey_context) {
+  delete journey_context.dom; // FIXME: close the window everywhere.
   journey_context.journey_xpromise.resolve();
   journey_context.dom_xpromise.resolve();
   console.log(`journey ended with step ${step.name} of journey ${journey_context.journey_number} ${date_f()}`);
