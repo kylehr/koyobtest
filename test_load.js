@@ -237,6 +237,7 @@ function mk_journey_context ({dom, journey_number, site, path, resources, virtua
     , request_id	: request_id
     , log_stream_id	: log_stream_id
     , event_log 	: event_log
+    , journey_stack 	: []
     }; 
   // Resolve the step promise - assumed resolved except while navigating.
   o.step_xpromise.resolve();
@@ -303,13 +304,14 @@ async function do_next_step(step, journey_context, next_relp = "then") {
     , "bus.step.wait_external"	: do_bus_step_wait_external
     , "bus.guard"		: do_bus_guard
     , "bus.step.end_journey"	: do_bus_step_end_journey
+    , "bus.step.sub_journey"	: do_bus_step_sub_journey
     };
   console.log(`journey ${journey_context.journey_number} step ${step.name} completed successfully at ${date_f()}`);
   journey_context.event_log.push([ journey_context.journey_number, step.name, date_f()]);
   let relp = step.relps[next_relp];
   assert(relp && relp.length, `no next step for relationship ${next_relp} of step ${step.name}`);
   assert(relp.length != 0, `no next step for relationship ${next_relp} of step ${step.name}`);
-  assert(relp.length == 1, `too many next steps for relationship ${next_relp} of step ${step.name}`);
+  assert(relp.length == 1, `too many next steps for relationship ${next_relp} of step ${step.name}`); // FIXME: is this correct????
   let next_step = first_relp(relp);
   if (_.has(next_step.attrs, "abort")) {
     console.log(`aborting at step ${next_step.name}`)
@@ -325,8 +327,8 @@ async function do_next_step(step, journey_context, next_relp = "then") {
     }
   }
 async function do_bus_guard(step, journey_context) { 
-  assert(step.relps.then.length, "no next step for bus.guard ${step.name}");
-  assert(step.relps["then.otherwise"].length, "no next.otherwise step for bus.guard ${step.name}");
+  assert(step.relps.then.length, `no next step for bus.guard ${step.name}`);
+  assert(step.relps["then.otherwise"].length, `no next.otherwise step for bus.guard ${step.name}`);
   assert(step.attrs.condition, `condition required for bus.guard ${step.name}`);
   insert_data(journey_context);
   let result = dom_bool(journey_context.dom_f(),`boolean(${step.attrs.condition})`, journey_context); 
@@ -337,11 +339,27 @@ async function do_bus_guard(step, journey_context) {
 async function do_empty_step(step, journey_context) {
   do_next_step(step, journey_context).catch( error => journey_context.journey_xpromise.reject(error));
   }
+async function do_bus_step_sub_journey(step, journey_context) {
+  journey_context.journey_stack.push(step);	// Save the step for when we finish the sub-journey.
+  assert(step.relps.then.length, `no next step for bus.guard ${step.name}`);
+  assert(step.relps["then.sub_journey"].length, `no sub_journey step for bus.guard ${step.name}`);
+  let sub_journey = first_relp(step.relps["then.sub_journey"]);
+  console.log(`journey started sub-journey ${sub_journey.name} at step ${step.name} of journey ${journey_context.journey_number} ${date_f()}`);
+  do_next_step(sub_journey, journey_context).catch( error => journey_context.journey_xpromise.reject(error));
+  console.log(66666666);
+  }
 async function do_bus_step_end_journey(step, journey_context) {
-  delete journey_context.dom; // FIXME: close the window everywhere.
-  journey_context.journey_xpromise.resolve();
-  journey_context.dom_xpromise.resolve();
-  console.log(`journey ended with step ${step.name} of journey ${journey_context.journey_number} ${date_f()}`);
+  if (journey_context.journey_stack.length > 0) {
+  console.log(8888888);
+    let step = journey_context.journey_stack.pop();
+    do_next_step(step, journey_context).catch( error => journey_context.journey_xpromise.reject(error) );
+    }
+  else {
+    delete journey_context.dom; // FIXME: close the window everywhere.
+    journey_context.journey_xpromise.resolve();
+    journey_context.dom_xpromise.resolve();
+    console.log(`journey ended with step ${step.name} of journey ${journey_context.journey_number} ${date_f()}`);
+    }
   }
 async function do_bus_step_interact(step, journey_context) {
   assert(step.attrs.click, `click attribute required for interaction ${step.name}`);

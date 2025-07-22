@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <graph xmlns="http://pathwaysystems.com/2013/relations/graph">
-  <object id="oid7075" sdegree="31" tdegree="1">
+  <object id="oid7075" sdegree="29" tdegree="1">
     <a name="name">GuestGame</a>
     <a name="type">bus.journey</a>
   </object>
@@ -187,6 +187,18 @@
     <a name="name">JoinGame</a>
     <a name="type">bus.step.interact</a>
   </object>
+  <object id="oid7984" sdegree="5" tdegree="2">
+    <a name="name">RunGame</a>
+    <a name="type">bus.journey</a>
+  </object>
+  <object id="oid7986" sdegree="0" tdegree="2">
+    <a name="name">EndRunGame</a>
+    <a name="type">bus.step.end_journey</a>
+  </object>
+  <object id="oid7988" sdegree="2" tdegree="2">
+    <a name="name">SubRunGame</a>
+    <a name="type">bus.step.sub_journey</a>
+  </object>
   <relation id="rid12472" source="oid7079" target="oid7081">
     <a name="rtype">depends</a>
   </relation>
@@ -202,12 +214,6 @@
   <relation id="rid12468" source="oid7075" target="oid7079">
     <a name="rtype">then</a>
   </relation>
-  <relation id="rid12470" source="oid7075" target="oid7080">
-    <a name="rtype">then</a>
-  </relation>
-  <relation id="rid12486" source="oid7080" target="oid7088">
-    <a name="rtype">then</a>
-  </relation>
   <relation id="rid12489" source="oid7088" target="oid7089">
     <a name="rtype">then</a>
   </relation>
@@ -215,9 +221,6 @@
     <a name="rtype">then</a>
   </relation>
   <relation id="rid12523" source="oid7094" target="oid7085">
-    <a name="rtype">then</a>
-  </relation>
-  <relation id="rid12537" source="oid7096" target="oid7107">
     <a name="rtype">then</a>
   </relation>
   <relation id="rid12542" source="oid7093" target="oid7096">
@@ -271,9 +274,6 @@
   <relation id="rid12839" source="oid7086" target="oid7090">
     <a name="rtype">then</a>
   </relation>
-  <relation id="rid12840" source="oid7090" target="oid7221">
-    <a name="rtype">then</a>
-  </relation>
   <relation id="rid14135" source="oid7945" target="oid7091">
     <a name="rtype">then</a>
   </relation>
@@ -289,10 +289,31 @@
   <relation id="rid14145" source="oid7948" target="oid7945">
     <a name="rtype">then</a>
   </relation>
+  <relation id="rid14248" source="oid7075" target="oid7080">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid14251" source="oid7080" target="oid7088">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid14252" source="oid7090" target="oid7988">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid14253" source="oid7988" target="oid7107">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid14255" source="oid7096" target="oid7986">
+    <a name="rtype">then</a>
+  </relation>
+  <relation id="rid14267" source="oid7984" target="oid7221">
+    <a name="rtype">then</a>
+  </relation>
   <relation id="rid12577" source="oid7120" target="oid7102">
     <a name="rtype">then.otherwise</a>
   </relation>
   <relation id="rid12747" source="oid7118" target="oid7120">
     <a name="rtype">then.otherwise</a>
+  </relation>
+  <relation id="rid14247" source="oid7988" target="oid7984">
+    <a name="rtype">then.sub_journey</a>
   </relation>
 </graph>
