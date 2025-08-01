@@ -121,6 +121,7 @@ function navigate_away(verb, path, journey_context) {
   journey_context.step_xpromise = mk_external_promise(); // Hold up the next step until step navigation is complete.
   let replace_dom = async (text, target_url) => {
         // Clean up the previous dom.
+        console.log(`journey ${journey_context.journey_number} replace dom`);
         journey_context.dom_xpromise.resolve(); 
         // Start the new dom as a result of the navigation.
         let onerror = (message, source, lineno, colno, error) => { 
@@ -155,7 +156,9 @@ function navigate_away(verb, path, journey_context) {
           window_api_object.my_event_source = es.EventSource;
           } // Create new a new dom when a navigation event occurs.
 	else console.warn(`WARNING ${target_url} has no testing API object`);
+	console.log(`journey ${journey_context.journey_number} wait for functions available in file ${journey_context.file}`);
         await dom.window.eventPromises.functionsAvailablePromise;
+	console.log(`journey ${journey_context.journey_number} functions available`);
 	
         // Prepare to clean this dom up on next navigation.
         journey_context.dom_xpromise = mk_external_promise();
@@ -243,35 +246,36 @@ function mk_journey_context ({dom, journey_number, site, path, resources, virtua
   o.step_xpromise.resolve();
   return o; 
   }
+function browse_object_path(browse_object) {
+  assert(browse_object.type == "bus.step.browse_url", "bus.step.browse_url object expected");
+  assert(browse_object.relps.depends, "bus.step.browse_url depends relationship expected");
+  let web_page = first_relp(browse_object.relps.depends);
+  assert(web_page.type == "bus.feature.web_page", "bus.feature.web_page dependant object expected");
+  return web_page.attrs.url;
+  }
 async function start_journey({ site, browse_object, journey_number, globals, event_promises, event_data, vConsoles, request_id, log_stream_id, event_log }) {
   let journey_xpromise = mk_external_promise(`journey ${journey_number}`);
   assert(browse_object.type == "bus.step.browse_url", "Journeys start with bus.step.browse_url objects");
-  let path = first_relp(browse_object.relps.depends).attrs.url;
+  let path = browse_object_path(browse_object);
   let url = site + path;
   let virtualConsole = new VirtualConsole();
   vConsoles.push(virtualConsole);
+  let journey_context = null;
   virtualConsole.sendTo(
-    //{ log	: (...args) => { console.log(`log journey ${journey_number}  ${date_f()}`); console.log(...args)}
     { log	: (...args) => { console.log(`log journey ${journey_number}  ${date_f()}`, ...args)}
-    , error	: (...args) => { console.log(`log journey ${journey_number}  ${date_f()}`); console.log(...args)}
+    , warn	: (...args) => { console.log(`log journey ${journey_number}  ${date_f()}`); console.log(...args)}
+    , error	: (...args) => { console.log(`log journey ${journey_number}  ${date_f()} file ${journey_context?.window_f().testing_flags?.file}`); console.log(...args)}
     });
   console.log(`navigating to ${url}`);
   JSDOM.fromURL(url, jsdom_options(resources, virtualConsole, {journey_xpromise}, () => { throw new Error(`onerror not implemented`) }))//, { beforeParse(window) { 
-    ////console.log(`############# set fetch up.`);
-    //window.eval(fetch_code);
-    ////retry_after_fail(() => window.eval(fetch_code), 500, 10, "new dom fetch eval"); 
-    //}}) // Add fetch.
   .then(async dom => {
     dom.window.EventSource = es.EventSource;
     let navigation_xpromise = mk_external_promise(`journey ${journey_number}`);
-    let journey_context = mk_journey_context({dom, journey_number, site, path, resources, virtualConsole, journey_xpromise, globals, event_promises, event_data, request_id, log_stream_id, event_log});
+    journey_context = mk_journey_context({dom, journey_number, site, path, resources, virtualConsole, journey_xpromise, globals, event_promises, event_data, request_id, log_stream_id, event_log});
     journey_xpromise = journey_context.journey_xpromise.promise;
     await await_page_load(dom);
     dom.window.my_alert = (message) => { console.log(`journey ${journey_context.journey_number} fail due to alert ${message}`);; journey_context.journey_xpromise.reject(message); } // Fail with this message.
-    //class ArgElt extends dom.window.HTMLElement { constructor() { super(); } }
-    //dom.window.customElements.define("run-arg", ArgElt);
     journey_context.file = dom.window.testing_flags.file; 
-    //console.log(`loaded ${journey_context.file}`);
     journey_context.window_f().testing_flags.suppress_navigation = true;
     journey_context.window_f().testing_flags.suppress_sound = true;
     journey_context.window_f().testing_flags.suppress_animations = true;
@@ -298,13 +302,14 @@ async function start_journey({ site, browse_object, journey_number, globals, eve
   }
 async function do_next_step(step, journey_context, next_relp = "then") {
   const step_map = 
-    { "bus.step.interact"	: do_bus_step_interact
-    , "bus.event"		: do_bus_event
-    , "bus.step.wait"		: do_bus_step_wait
-    , "bus.step.wait_external"	: do_bus_step_wait_external
+    { "bus.event"		: do_bus_event
     , "bus.guard"		: do_bus_guard
+    , "bus.step.browse_url"	: do_bus_step_browse_url
     , "bus.step.end_journey"	: do_bus_step_end_journey
     , "bus.step.sub_journey"	: do_bus_step_sub_journey
+    , "bus.step.interact"	: do_bus_step_interact
+    , "bus.step.wait"		: do_bus_step_wait
+    , "bus.step.wait_external"	: do_bus_step_wait_external
     };
   console.log(`journey ${journey_context.journey_number} step ${step.name} completed successfully at ${date_f()}`);
   journey_context.event_log.push([ journey_context.journey_number, step.name, date_f()]);
@@ -361,11 +366,20 @@ async function do_bus_step_end_journey(step, journey_context) {
     console.log(`journey ended with step ${step.name} of journey ${journey_context.journey_number} ${date_f()}`);
     }
   }
+async function do_bus_step_browse_url(step, journey_context) {
+  try {
+    let path = browse_object_path(step);
+    navigate_away("get", path, journey_context);
+    do_next_step(step, journey_context);
+    }
+  catch (error) {
+    journey_context.journey_xpromise.reject(error);
+    }
+  }
 async function do_bus_step_interact(step, journey_context) {
   assert(step.attrs.click, `click attribute required for interaction ${step.name}`);
   let count = select_number(step.attrs.count, 1, journey_context);
   let element = null;
-  let debug = null;
   if (step.attrs.setvar) {
     let name_and_expression = step.attrs.setvar.split(/=(.*)/);
     let name = name_and_expression[0].trim();
@@ -376,7 +390,7 @@ async function do_bus_step_interact(step, journey_context) {
     echo(journey_context, step, step.attrs.echo);
     }
   let click_fn = async () => {
-    await await_dom_elt(step.attrs.click, journey_context, 3000, `could not find ${step.name} journey ${journey_context.journey_number} click element `);
+    await await_dom_elt(step.attrs.click, journey_context, 10000, `could not find ${step.name} journey ${journey_context.journey_number} click element `, () => console.log(`dumping ${step.name} journey ${journey_context.journey_number} ${journey_context.dom_f().serialize()}`) );
     let document = journey_context.document_f();
     element = document.evaluate(step.attrs.click, document, null, journey_context.window_f().XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
     if (!element) console.log(`step ${step.name} journey ${journey_context.journey_number} dom ${journey_context.dom_f().serialize()}`);
@@ -399,6 +413,9 @@ async function do_bus_step_interact(step, journey_context) {
     last_action_promise = last_action_promise.then(() => delay_after(click_fn, 100)); 
     }
   last_action_promise.then(() => {
+    if (step.attrs.clear) { 
+      element.value = '';
+      }
     if (step.attrs.enter) { 
       insert_data(journey_context);
       element.value = dom_string(journey_context.dom_f(), step.attrs.enter, journey_context); // Enter string value of the xpath.
@@ -410,10 +427,11 @@ async function do_bus_step_interact(step, journey_context) {
     });
   }
 async function await_dom_elt(xpath, journey_context, timeout, error_message, debug) { 
-  return await mandatory_wait(() => dom_elt(journey_context.dom_f(), xpath, journey_context), timeout, error_message, null, debug); 
+  return await mandatory_wait(() => dom_elt(journey_context.dom_f(), xpath, journey_context), timeout, error_message, debug); 
   }
 function date_f() { return (new Date()).toString().substring(0, 24); }  
 async function do_bus_step_wait(step, journey_context) {
+  console.log(`jounrney ${journey_context.journey_number} bus.step.wait initiated`);
   assert((step.attrs.condition || step.attrs.event) && ((!step.attrs.condition) || (!step.attrs.event)), `condition XOR event required for bus.step.wait ${step.name}`);
   assert(step.attrs.timeout && step.attrs.timeout != NaN, `timeout required for bus.step.wait step ${step.name} journey ${journey_context.journey_number}`);
   let timeout = parseInt(step.attrs.timeout);
@@ -422,6 +440,7 @@ async function do_bus_step_wait(step, journey_context) {
     }
   if (step.attrs.echo) echo(journey_context, step, step.attrs.echo);
   if (step.attrs.condition) {
+    console.log(`bus.step.wait has condition ${step.attrs.condition}`);
     let xpath = `(${step.attrs.condition})`;
     if (step.attrs["condition.1"]) {
       xpath = `${xpath} or (${step.attrs["condition.1"]})`
@@ -678,7 +697,7 @@ function do_fetch(journey_context, url, opts, retry_timeout = 1, max_retry_timeo
   console.log(`journey ${journey_context.journey_number} fetching ${retry_timeout} ${date_f()}`);
   fetch(url, opts)
   .then( response => { 
-    console.log(`journey ${journey_context.journey_number} fetched`); 
+    console.log(`journey ${journey_context.journey_number} fetched ${url}`); 
     resolver(response);
     })
   .catch( err => {
