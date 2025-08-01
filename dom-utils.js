@@ -29,8 +29,15 @@ async function retry_after_fail(fn, wait_interval, attempts, tag) {
   return new Promise(resolve => setTimeout(resolve, wait_interval));
   }
 async function delay_after(fn, wait_interval = 0) {
-  await fn();
-  return new Promise(resolve => setTimeout(resolve, wait_interval));
+  // Run the function then wait an interval before returning the value.
+  try {
+    await fn();
+    return new Promise(resolve => setTimeout(resolve, wait_interval));
+    }
+  catch (error) {
+    console.error('delay_after', error);
+    throw error;
+    }
   }
 async function delay_for(wait_interval) {
   return new Promise(resolve => setTimeout(resolve, wait_interval));
