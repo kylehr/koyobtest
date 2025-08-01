@@ -15,6 +15,7 @@ const fetchPkg			= 'node_modules/whatwg-fetch/dist/fetch.umd.js';
 const fs			= require('fs');
 const fetch_code		= fs.readFileSync(fetchPkg, 'utf-8');
 
+const uuid			= require('uuid');
 const zl			= require("zip-lib");
 
 const { S3Client } = require("@aws-sdk/client-s3");
@@ -112,7 +113,7 @@ else if (cluster.isWorker) {
 
 async function process_xml() {
   let xml = fs.readFileSync('./guest.xml', 'utf-8');
-  let parms = {number_gamers: number_gamers};
+  let parms = {number_gamers: number_gamers, server_instance_id: process.env.FLY_MACHINE_ID, test_instance_id: `${process.env.FLY_MACHINE_ID}-${uuid.v4()}`};
   jy.set_fetch_code(fetch_code);
   jy.process_journey_xml(xml);
   let console_constructor = console.Console;
