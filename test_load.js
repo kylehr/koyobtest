@@ -75,7 +75,7 @@ async function run_steps (site, parms, request_id, log_stream_id) {
     reject_result(err) });
   return result;
   }
-function jsdom_options (resources, virtualConsole, journey_context, onerror = null, session_pairs = null) {
+function jsdom_options (cookie_jar, resources, virtualConsole, journey_context, onerror = null, session_pairs = null) {
   let result = 
     { referrer: "https://example.com/"
     , includeNodeLocations: true
@@ -100,6 +100,7 @@ function jsdom_options (resources, virtualConsole, journey_context, onerror = nu
         if (session_pairs) _.each(session_pairs, pair => window.sessionStorage.setItem(pair[0], pair[1])); // Transfer the contents of the session storage from the previous dom.
         }
     , virtualConsole	: virtualConsole
+    , cookieJar	: cookie_jar
     };
   return result;
   }
@@ -117,7 +118,8 @@ function mk_external_promise(label = null) {
 function first_relp (relp) { return exported.graph[relp[0]]; }
 function navigate_away(verb, path, journey_context) {
   let session_pairs = _.toPairs(journey_context.window_f().sessionStorage);
-  console.log(`navigate_away ${verb} ${path} journey ${journey_context.journey_number} ${JSON.stringify(journey_context.window_f().sessionStorage)} ${JSON.stringify(session_pairs)}`);
+  console.log(`navigate_away ${verb} ${path} journey ${journey_context.journey_number} ${JSON.stringify(journey_context.window_f().sessionStorage)} ${JSON.stringify(session_pairs)} cookies ${JSON.stringify(journey_context.cookie_jar)}`);
+  console.log(`cookie jar keys ${journey_context.cookie_jar.getCookiesSync(journey_context.site)} ${journey_context.site}`);
   journey_context.step_xpromise = mk_external_promise(); // Hold up the next step until step navigation is complete.
   let replace_dom = async (text, target_url) => {
         // Clean up the previous dom.
@@ -129,7 +131,7 @@ function navigate_away(verb, path, journey_context) {
           console.log(`window.oneerror... message:${message} source:${source} lineno:${lineno} colno:${colno}\n${journey_context.source}`); 
           journey_context.journey_xpromise.reject(error) ;
           }
-        const dom = new JSDOM(text, _.assign({ url: target_url }, jsdom_options(journey_context.resources, journey_context.virtualConsole, journey_context, onerror, session_pairs)));
+        const dom = new JSDOM(text, _.assign({ url: target_url }, jsdom_options(journey_context.cookie_jar, journey_context.resources, journey_context.virtualConsole, journey_context, onerror, session_pairs)));
         journey_context.dirty = true;
         //delete journey_context.dom; // seemed to cause:
 //						/home/node/test_load.js:214
@@ -142,7 +144,7 @@ function navigate_away(verb, path, journey_context) {
 
         // Get data from loaded page.
         await await_page_load(dom);
-        await mandatory_wait(() => dom.window.testing_flags, 60000, `mysteriously missing testing flags`); 
+        await mandatory_wait(() => dom.window.testing_flags, 60000, `mysteriously missing testing flags for ${target_url}`); 
         dom.window.my_alert = (message) => { console.log(`journey ${journey_context.journey_number} fail due to alert ${message}`); journey_context.journey_xpromise.reject(message); } // Fail with this message.
         dom.window.testing_flags.suppress_navigation = true;
         dom.window.testing_flags.suppress_sound = true;
@@ -179,9 +181,10 @@ function navigate_away(verb, path, journey_context) {
     for (const key of formData.keys()) { body.append(key, formData.get(key)); }
     const headers = new Headers();
     headers.append("Content-Type", "application/x-www-form-urlencoded");
+    headers.append("Cookie", journey_context.cookie_jar.getCookiesSync(journey_context.site));
     let target_url = journey_context.site + form.getAttribute('action');
     console.log(`${target_url} ${JSON.stringify(body)} ${JSON.stringify(headers)}`);
-    do_fetch(journey_context, target_url, { method: 'POST', body: body, headers: headers })
+    do_fetch(journey_context, target_url, { method: 'POST', body: body, headers: headers, credentials: 'same-origin' })
       .catch(e => { 
         console.error(`journey ${journey_context.journey_number} POST`, e);
         let err = new Error(`?????????????????????????????????????????????????????????????? could not POST ${target_url} due to ${e} journey ${journey_context.journey_number} ${journey_context.request_id} ${journey_context.log_stream_id}`);
@@ -201,14 +204,16 @@ function navigate_away(verb, path, journey_context) {
     //console.log(`GET ${target_url}`);
     //fetch(target_url, { agent: proxy_agent })
     let f = () => { 
-      do_fetch(journey_context, target_url, { })
+      const headers = new Headers();
+      headers.append("Cookie", journey_context.cookie_jar.getCookiesSync(journey_context.site));
+      do_fetch(journey_context, target_url, { headers: headers, credentials: 'same-origin' })
       .catch(e => { 
         console.error(`journey ${journey_context.journey_number} GET`, e);
         let err = new Error(`@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ could not GET ${target_url} due to ${e} journey ${journey_context.journey_number} ${journey_context.request_id} ${journey_context.log_stream_id}`); 
         setTimeout(() => journey_context.journey_xpromise.reject(err), 10000); // Give console some time to write;
         throw err;
         })
-      .then(response => { console.log(`journey ${journey_context.journey_number} got ${target_url} at ${date_f()}`); return response.text(); })
+      .then(response => { console.log(`journey ${journey_context.journey_number} got ${target_url} at ${date_f()} headers ${response.headers.get('Set-Cookie')}`); return response.text(); })
       .then(text => { journey_context.source = text; replace_dom(text, target_url) });
       }
       // FIXME the following code is rubish
@@ -216,9 +221,10 @@ function navigate_away(verb, path, journey_context) {
     }
   else { throw new Error(`unsuppored verb ${verb}`); }
   }
-function mk_journey_context ({dom, journey_number, site, path, resources, virtualConsole, journey_xpromise, globals, event_promises, event_data, vConsoles, request_id, log_stream_id, event_log}) { 
+function mk_journey_context ({dom, cookie_jar, journey_number, site, path, resources, virtualConsole, journey_xpromise, globals, event_promises, event_data, vConsoles, request_id, log_stream_id, event_log}) { 
   let o = 
     { dom		: dom
+    , cookie_jar	: cookie_jar
     , site		: site
     , path		: path
     , dom_f		: () => o.dom
@@ -267,11 +273,12 @@ async function start_journey({ site, browse_object, journey_number, globals, eve
     , error	: (...args) => { console.log(`log journey ${journey_number}  ${date_f()} file ${journey_context?.window_f().testing_flags?.file}`); console.log(...args)}
     });
   console.log(`navigating to ${url}`);
-  JSDOM.fromURL(url, jsdom_options(resources, virtualConsole, {journey_xpromise}, () => { throw new Error(`onerror not implemented`) }))//, { beforeParse(window) { 
+  let cookie_jar = new jsdom.CookieJar();
+  JSDOM.fromURL(url, jsdom_options(cookie_jar, resources, virtualConsole, {journey_xpromise}, () => { throw new Error(`onerror not implemented`) }))//, { beforeParse(window) { 
   .then(async dom => {
     dom.window.EventSource = es.EventSource;
     let navigation_xpromise = mk_external_promise(`journey ${journey_number}`);
-    journey_context = mk_journey_context({dom, journey_number, site, path, resources, virtualConsole, journey_xpromise, globals, event_promises, event_data, request_id, log_stream_id, event_log});
+    journey_context = mk_journey_context({dom, cookie_jar, journey_number, site, path, resources, virtualConsole, journey_xpromise, globals, event_promises, event_data, request_id, log_stream_id, event_log});
     journey_xpromise = journey_context.journey_xpromise.promise;
     await await_page_load(dom);
     dom.window.my_alert = (message) => { console.log(`journey ${journey_context.journey_number} fail due to alert ${message}`);; journey_context.journey_xpromise.reject(message); } // Fail with this message.
@@ -458,7 +465,9 @@ async function do_bus_step_wait(step, journey_context) {
     insert_data(journey_context);
     //console.log(`data insertion completed ${xpath} for step ${step.name} journey ${journey_context.journey_number} at ${date_f()}`);
     let start = new Date();
-    await mandatory_wait(() => dom_bool(journey_context.dom_f(), xpath, journey_context), timeout, 
+    await mandatory_wait(
+        () => dom_bool(journey_context.dom_f(), xpath, journey_context), 
+        timeout, 
         `wait condition timed out for step ${step.name} journey ${journey_context.journey_number} at ${date_f()} ${journey_context.request_id} ${journey_context.log_stream_id}`,
         () => { console.log(`request ${journey_context.request_id} step ${step.name} journey ${journey_context.journey_number} started at ${start.toString().substring(0, 24)} and timed out after ${timeout} at ${date_f()}  ${journey_context.dom_f().serialize()} ${journey_context.log_stream_id}`) });//debug code
     console.log(`wait fulfilled for ${xpath} for step ${step.name} journey ${journey_context.journey_number} at ${date_f()}`);
@@ -468,7 +477,7 @@ async function do_bus_step_wait(step, journey_context) {
   else { // event
     let timeout_start = new Date();
     let promiseName = step.attrs.event + "Promise";
-    await mandatory_wait(
+    await mandatory_wait( // FIXME: promise is not timed out ???
         () => journey_context.window_f().eventPromises.hasOwnProperty(promiseName), 
         timeout,
         `could not find ${promiseName} for journey ${journey_context.journey_number} step ${step.name}`,
