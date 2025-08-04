@@ -113,7 +113,8 @@ else if (cluster.isWorker) {
 
 async function process_xml() {
   let xml = fs.readFileSync('./guest.xml', 'utf-8');
-  let parms = {number_gamers: number_gamers, server_instance_id: process.env.FLY_MACHINE_ID, test_instance_id: `${process.env.FLY_MACHINE_ID}-${uuid.v4()}`};
+  let parms = {number_gamers: number_gamers, server_instance_id: process.env.FLY_MACHINE_ID, test_instance_id: `${process.env.FLY_MACHINE_ID}${uuid.v4().replace(/-/g, '')}`};
+  console.log(`test_instance_id ${parms.test_instance_id}`);
   jy.set_fetch_code(fetch_code);
   jy.process_journey_xml(xml);
   let console_constructor = console.Console;
