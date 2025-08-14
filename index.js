@@ -3,7 +3,6 @@ const app			= express()
 const cache			= require('express-cache-ctrl');
 const serve_index		= require('serve-index');
 
-const cluster			= require('node:cluster');
 const os			= require('node:os');
 const availableParallelism	= os.availableParallelism;
 const process			= require('node:process');
@@ -42,104 +41,81 @@ let number_gamers	= process.env.GAMERS	? parseInt(process.env.GAMERS)		: 1;
 let number_errors = 0;
 let timeout = null;
 
-if (cluster.isPrimary) {
-  console.log(`testing site ${site}`);
-  if (process.env.TIMEOUT) { timeout = setTimeout( () => zip_logs('./timeout.zip'), parseInt(process.env.TIMEOUT)  ) }
-  let log_fname = `${(new Date()).toISOString().substring(0,19).replaceAll(':', '.')}.log`;
-  let err_fname = `ERR.${(new Date()).toISOString().substring(0,19).replaceAll(':', '.')}.log`;
+let xml = fs.readFileSync('./guest.xml', 'utf-8');
+let parms = {number_gamers: number_gamers, server_instance_id: process.env.FLY_MACHINE_ID, test_instance_id: `${process.env.FLY_MACHINE_ID}${uuid.v4().replace(/-/g, '')}`};
+console.log(`test_instance_id ${parms.test_instance_id}`);
+jy.set_fetch_code(fetch_code);
+jy.process_journey_xml(xml);
+let console_constructor = console.Console;
 
-  console.log(`number_gamers: ${number_gamers}, process.env.STREAMS: ${process.env.STREAMS}, process.env.ITERATIONS: ${process.env.ITERATIONS}, number_sequences: ${number_sequences}, number_iterations: ${number_iterations}, numCPUs: ${numCPUs}`)
-  console.log(`parellelism: ${number_sequences}`);
-  //console.log(`__dirname: ${__dirname}`);
-  //console.log(`Primary ${process.pid} is running.`);
-  
-  let games_remaining = number_sequences * number_iterations;
-  let this_sequence = 0;
-
-  for (; this_sequence < number_sequences; this_sequence++) {
-    process.env.sequence_number = this_sequence;
-    const worker = cluster.fork();
-    worker.on('message', message => {
-      let stats = JSON.parse(message);
-      if (stats.logs) {
-        //console.log(`success message`);
-        let start_time = new Date(stats.start);
-        _.each(stats.logs, journey_step => { 
-          let event_time = new Date(journey_step[2]);
-          let elapsed_time_s = (event_time - start_time) / 1000;
-          fs.appendFileSync(log_fname, `,${number_sequences},${number_iterations},${stats.sequence_number},${stats.iteration_number},${journey_step[0]},${journey_step[1]},${elapsed_time_s}\n`)  });
-        }
-      else {
-        number_errors++;
-        let err_msg = `sequence_number=${stats.sequence_number}, iteration_number=${stats.iteration_number} error=${stats.error} stack=${stats.stack}\n`;
-        console.log("err_msg", err_msg);
-        fs.appendFileSync(err_fname, err_msg);
-        }
-      games_remaining--;
-      console.log(`games_remaining ${games_remaining} number_errors ${number_errors}`);
-      if (games_remaining === 0) {
-        console.log(`all games finished, ${number_errors} errors, zipping logs...`);
-        zip_logs();
-        clearTimeout(timeout);
-        }
+let games_remaining = number_sequences * number_iterations;
+let this_sequence = 0;
+const port = process.env.PORT || 3000
+app.use(express.static(__dirname + "/"))
+app.use('/', serve_index(__dirname + "/"))
+app.use('/', cache.disable());
+app.use('/ls/', cache.disable());
+app.get('/togo/', (req, res) => {
+  res.send(`games_remaining=${games_remaining} this_sequence=${this_sequence}`);
+  });
+app.get('/ls/:glob', (req, res) => {
+  let glob = req.params.glob ? req.params.glob : '.*';
+  const re = new RegExp(`^${glob}$`);
+  let result = "";
+  fs.readdirSync(".").forEach(file => {
+    if (file.match(re)) result += `<a href="/${file}">${file}</a><br/>`
     });
-  }
+  res.send(result)
+  });
 
-  const port = process.env.PORT || 3000
-  app.use(express.static(__dirname + "/"))
-  app.use('/', serve_index(__dirname + "/"))
-  app.use('/', cache.disable());
-  app.use('/ls/', cache.disable());
-  app.get('/togo/', (req, res) => {
-    res.send(`games_remaining=${games_remaining} this_sequence=${this_sequence}`);
-    });
-  app.get('/ls/:glob', (req, res) => {
-    let glob = req.params.glob ? req.params.glob : '.*';
-    const re = new RegExp(`^${glob}$`);
-    let result = "";
-    fs.readdirSync(".").forEach(file => {
-      if (file.match(re)) result += `<a href="/${file}">${file}</a><br/>`
-      });
-    res.send(result)
-    });
+app.listen(port, () => {
+  console.log(`App is listening on port ${port}`)
+  })
 
-  app.listen(port, () => {
-    console.log(`App is listening on port ${port}`)
-    })
-  } 
-else if (cluster.isWorker) {
-  process_xml()
-}
+console.log(`testing site ${site}`);
+if (process.env.TIMEOUT) { timeout = setTimeout( () => zip_logs('./timeout.zip'), parseInt(process.env.TIMEOUT)  ) }
+let log_fname = `${(new Date()).toISOString().substring(0,19).replaceAll(':', '.')}.log`;
+let err_fname = `ERR.${(new Date()).toISOString().substring(0,19).replaceAll(':', '.')}.log`;
+console.log(`number_gamers: ${number_gamers}, process.env.STREAMS: ${process.env.STREAMS}, process.env.ITERATIONS: ${process.env.ITERATIONS}, number_sequences: ${number_sequences}, number_iterations: ${number_iterations}, numCPUs: ${numCPUs}`)
+console.log(`parellelism: ${number_sequences}`);
 
-async function process_xml() {
-  let xml = fs.readFileSync('./guest.xml', 'utf-8');
-  let parms = {number_gamers: number_gamers, server_instance_id: process.env.FLY_MACHINE_ID, test_instance_id: `${process.env.FLY_MACHINE_ID}${uuid.v4().replace(/-/g, '')}`};
-  console.log(`test_instance_id ${parms.test_instance_id}`);
-  jy.set_fetch_code(fetch_code);
-  jy.process_journey_xml(xml);
-  let console_constructor = console.Console;
-  let start = new Date();
+run_stuff();
+async function run_stuff () {
 
   // Run each iteration.
+  // FIXME: surely a loop does not work for functions that return promises.
   for (let iteration = 0; iteration < number_iterations; iteration++) {
+    let iteration_number = iteration + 1;
+    let sequence_number = 1; // Only support one sequence.
+    let stream = fs.createWriteStream(`${__dirname}/sequence_${sequence_number}_of_${number_sequences}_iteration_${iteration_number}_of_${number_iterations}.log`, {flags:'a'});
+    let file_console = new console_constructor(stream, stream);
+    let start = new Date();
     try {
-      let iteration_number = iteration + 1;
-      let sequence_number = parseInt(process.env.sequence_number) + 1; // Convert index to number.
-      let stream = fs.createWriteStream(`${__dirname}/sequence_${sequence_number}_of_${number_sequences}_iteration_${iteration_number}_of_${number_iterations}.log`, {flags:'a'});
-      let file_console = new console_constructor(stream, stream);
-      global.console = file_console;
-      //console.log(`run steps`);
-      jy.run_steps(site, parms, `stream ${sequence_number}`, `iteraction ${iteration_number}`)
-      .then(logs => {
-        process.send(JSON.stringify({ iteration_number: iteration_number, sequence_number: sequence_number, logs: logs, start: start}));
-        })
-      .catch(err => process.send(mk_error_message(err, iteration_number, sequence_number)));
+      console.log(`starting iteration ${iteration_number} of ${number_iterations}`);
+      let logs = await jy.run_steps(site, parms, `stream ${sequence_number}`, `iteration ${iteration_number}`, file_console)
+      console.log(`steps completed for stream ${sequence_number}`, `iteration ${iteration_number}`);
+      let start_time = new Date(start);
+      _.each(logs, journey_step => { 
+        let event_time = new Date(journey_step[2]);
+        let elapsed_time_s = (event_time - start_time) / 1000;
+        fs.appendFileSync(log_fname, `,${number_sequences},${number_iterations},${sequence_number},${iteration_number},${journey_step[0]},${journey_step[1]},${elapsed_time_s}\n`);
+        });
+      console.log(`log creation completed successfully for ${sequence_number}`, `iteration ${iteration_number}`);
       }
-    catch (err) {
-      process.send(mk_error_message(err, iteration_number, sequence_number));
+    catch (error) {
+      console.error(error);
+      number_errors++;
+      let err_msg = mk_error_message(error, iteration_number, sequence_number);
+      file_console.error("err_msg", err_msg);
+      fs.appendFileSync(err_fname, err_msg);
+      console.log(`run completed with error for ${sequence_number}`, `iteration ${iteration_number}`);
       }
     }
-  }
+  console.log(`all games finished, ${number_errors} errors, zipping logs...`);
+  clearTimeout(timeout);
+  zip_logs();
+  } 
+
 
 function mk_error_message(error, iteration_number, sequence_number) {
   let obj = {};
