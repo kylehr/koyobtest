@@ -31,6 +31,8 @@ const ATTR_NAME_DATA = 'data';
 const ATTR_NAME_CLICK = 'click';
 const BUSINESS_STEP_PREFIX = 'bus.step.';
 
+let Console = console;
+
 let exported =
 	{ get_next_object	: get_next_object
 	, is_step		: is_step
@@ -44,8 +46,9 @@ module.exports = exported;
 function node (node_oid) { return exported.graph[node_oid]; }
 function root_oid () { return exported.root_oid; }
 
-async function run_steps (site, parms, request_id, log_stream_id) {
-  console.log(`run steps ${request_id}`);
+async function run_steps (site, parms, request_id, log_stream_id, file_console) {
+  if (file_console) Console = file_console;
+  Console.log(`run steps ${request_id}`);
   let resolve_result	= null;
   let reject_result	= null;
   let result		= new Promise((resolve, reject) => { resolve_result = resolve; reject_result = reject });
@@ -70,7 +73,7 @@ async function run_steps (site, parms, request_id, log_stream_id) {
   Promise.all(sub_journeys)
   .then( () => resolve_result(event_log))
   .catch( (err) => { 
-    console.log(`77777777777 error in run_steps`); 
+    Console.log(`77777777777 error in run_steps`); 
     // FIXME: close all the windows. dom.window.close();
     reject_result(err) });
   return result;
@@ -110,25 +113,25 @@ function mk_external_promise(label = null) {
   let promise = new Promise(function(resolve, reject) { resolver = resolve; rejector = reject; });
   let result = 
     { promise	: promise
-    , resolve	: (data)	=> { if (label != null) console.log(`!!!!!!!!!!!!! journey ${label} resolved`); resolver(data); }
-    , reject	: (error)	=> { if (label != null) console.log(`!!!!!!!!!!!!! journey ${label} rejected`); rejector(error); }
+    , resolve	: (data)	=> { if (label != null) Console.log(`!!!!!!!!!!!!! journey ${label} resolved`); resolver(data); }
+    , reject	: (error)	=> { if (label != null) Console.log(`!!!!!!!!!!!!! journey ${label} rejected`); rejector(error); }
     }
   return result;
   }
 function first_relp (relp) { return exported.graph[relp[0]]; }
 function navigate_away(verb, path, journey_context) {
   let session_pairs = _.toPairs(journey_context.window_f().sessionStorage);
-  console.log(`navigate_away ${verb} ${path} journey ${journey_context.journey_number} ${JSON.stringify(journey_context.window_f().sessionStorage)} ${JSON.stringify(session_pairs)} cookies ${JSON.stringify(journey_context.cookie_jar)}`);
-  console.log(`cookie jar keys ${journey_context.cookie_jar.getCookiesSync(journey_context.site)} ${journey_context.site}`);
+  Console.log(`navigate_away ${verb} ${path} journey ${journey_context.journey_number} ${JSON.stringify(journey_context.window_f().sessionStorage)} ${JSON.stringify(session_pairs)} cookies ${JSON.stringify(journey_context.cookie_jar)}`);
+  Console.log(`cookie jar keys ${journey_context.cookie_jar.getCookiesSync(journey_context.site)} ${journey_context.site}`);
   journey_context.step_xpromise = mk_external_promise(); // Hold up the next step until step navigation is complete.
   let replace_dom = async (text, target_url) => {
         // Clean up the previous dom.
-        console.log(`journey ${journey_context.journey_number} replace dom`);
+        Console.log(`journey ${journey_context.journey_number} replace dom`);
         journey_context.dom_xpromise.resolve(); 
         // Start the new dom as a result of the navigation.
         let onerror = (message, source, lineno, colno, error) => { 
-          console.error(`journey ${journey_context.journey_number}`, error);
-          console.log(`window.oneerror... message:${message} source:${source} lineno:${lineno} colno:${colno}\n${journey_context.source}`); 
+          Console.error(`journey ${journey_context.journey_number}`, error);
+          Console.log(`window.oneerror... message:${message} source:${source} lineno:${lineno} colno:${colno}\n${journey_context.source}`); 
           journey_context.journey_xpromise.reject(error) ;
           }
         const dom = new JSDOM(text, _.assign({ url: target_url }, jsdom_options(journey_context.cookie_jar, journey_context.resources, journey_context.virtualConsole, journey_context, onerror, session_pairs)));
@@ -145,33 +148,33 @@ function navigate_away(verb, path, journey_context) {
         // Get data from loaded page.
         await await_page_load(dom);
         await mandatory_wait(() => dom.window.testing_flags, 60000, `mysteriously missing testing flags for ${target_url}`); 
-        dom.window.my_alert = (message) => { console.log(`journey ${journey_context.journey_number} fail due to alert ${message}`); journey_context.journey_xpromise.reject(message); } // Fail with this message.
+        dom.window.my_alert = (message) => { Console.log(`journey ${journey_context.journey_number} fail due to alert ${message}`); journey_context.journey_xpromise.reject(message); } // Fail with this message.
         dom.window.testing_flags.suppress_navigation = true;
         dom.window.testing_flags.suppress_sound = true;
         dom.window.testing_flags.suppress_animations = true;
         journey_context.file = dom.window.testing_flags.file;
-        //console.log(`journey_context.file ${journey_context.file}`);
+        //Console.log(`journey_context.file ${journey_context.file}`);
         let window_api_object = journey_context.window_f().testing_api;
         if (window_api_object) {
           window_api_object.navigate_away = (verb, path) => navigate_away(verb, path, journey_context);
           window_api_object.my_alert = (message) => { journey_context.journey_xpromise.reject(message); } // Fail with this message.
           window_api_object.my_event_source = es.EventSource;
           } // Create new a new dom when a navigation event occurs.
-	else console.warn(`WARNING ${target_url} has no testing API object`);
-	console.log(`journey ${journey_context.journey_number} wait for functions available in file ${journey_context.file}`);
+	else Console.warn(`WARNING ${target_url} has no testing API object`);
+	Console.log(`journey ${journey_context.journey_number} wait for functions available in file ${journey_context.file}`);
         await dom.window.eventPromises.functionsAvailablePromise;
-	console.log(`journey ${journey_context.journey_number} functions available`);
+	Console.log(`journey ${journey_context.journey_number} functions available`);
 	
         // Prepare to clean this dom up on next navigation.
         journey_context.dom_xpromise = mk_external_promise();
         journey_context.dom_xpromise.promise.then(() => {
           dom.window.close();  // Must use the direct dom not the context dom which can change.
-          //console.log(`journey_number=${journey_context.dom_xpromise.journey_number} action="window closed"`);
+          //Console.log(`journey_number=${journey_context.dom_xpromise.journey_number} action="window closed"`);
           });
         // Hold up processing until the functions in the loaded page are set up.
         
         journey_context.step_xpromise.resolve();
-        //promiseState(journey_context.step_xpromise.promise).then(state => console.log(`step state resolved ${state} ${journey_context.journey_number}`));
+        //promiseState(journey_context.step_xpromise.promise).then(state => Console.log(`step state resolved ${state} ${journey_context.journey_number}`));
     }
   if (verb == "post"){
     let form_id = path;
@@ -183,10 +186,10 @@ function navigate_away(verb, path, journey_context) {
     headers.append("Content-Type", "application/x-www-form-urlencoded");
     headers.append("Cookie", journey_context.cookie_jar.getCookiesSync(journey_context.site));
     let target_url = journey_context.site + form.getAttribute('action');
-    console.log(`${target_url} ${JSON.stringify(body)} ${JSON.stringify(headers)}`);
+    Console.log(`${target_url} ${JSON.stringify(body)} ${JSON.stringify(headers)}`);
     do_fetch(journey_context, target_url, { method: 'POST', body: body, headers: headers, credentials: 'same-origin' })
       .catch(e => { 
-        console.error(`journey ${journey_context.journey_number} POST`, e);
+        Console.error(`journey ${journey_context.journey_number} POST`, e);
         let err = new Error(`?????????????????????????????????????????????????????????????? could not POST ${target_url} due to ${e} journey ${journey_context.journey_number} ${journey_context.request_id} ${journey_context.log_stream_id}`);
         setTimeout(() => journey_context.journey_xpromise.reject(err), 10000); // Give the consoles some time to write.
         throw err;
@@ -194,30 +197,31 @@ function navigate_away(verb, path, journey_context) {
       .then(response => { if (!response.ok) throw new Error(`Response status: ${response.status}`); return response.text(); })
       .then(text => { journey_context.source = text; replace_dom(text, target_url) })
       .catch(e => { 
-        console.log(`!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! could not POST ${target_url} due to ${e} journey ${journey_context.journey_number} ${journey_context.request_id} ${journey_context.log_stream_id}`); throw new Error('!!!!!!'); 
+        Console.log(`!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! could not POST ${target_url} due to ${e} journey ${journey_context.journey_number} ${journey_context.request_id} ${journey_context.log_stream_id}`); throw new Error('!!!!!!'); 
         console.error(`journey ${journey_context.journey_number}`, e);
         })
       ;
     }
   else if (verb == "get") { 
     let target_url = journey_context.site + path;
-    //console.log(`GET ${target_url}`);
+    //Console.log(`GET ${target_url}`);
     //fetch(target_url, { agent: proxy_agent })
     let f = () => { 
       const headers = new Headers();
       headers.append("Cookie", journey_context.cookie_jar.getCookiesSync(journey_context.site));
+      //Console.log(`cookies ${journey_context.cookie_jar.getCookiesSync(journey_context.site)}`);
       do_fetch(journey_context, target_url, { headers: headers, credentials: 'same-origin' })
       .catch(e => { 
-        console.error(`journey ${journey_context.journey_number} GET`, e);
+        Console.error(`journey ${journey_context.journey_number} GET`, e);
         let err = new Error(`@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ could not GET ${target_url} due to ${e} journey ${journey_context.journey_number} ${journey_context.request_id} ${journey_context.log_stream_id}`); 
         setTimeout(() => journey_context.journey_xpromise.reject(err), 10000); // Give console some time to write;
         throw err;
         })
-      .then(response => { console.log(`journey ${journey_context.journey_number} got ${target_url} at ${date_f()} headers ${response.headers.get('Set-Cookie')}`); return response.text(); })
+      .then(response => { Console.log(`journey ${journey_context.journey_number} got ${target_url} at ${date_f()} headers ${response.headers.get('Set-Cookie')}`); return response.text(); })
       .then(text => { journey_context.source = text; replace_dom(text, target_url) });
       }
       // FIXME the following code is rubish
-    try { f(); } catch (e) { console.log(`11111 failed to get ${target_url}`); console.log(`22222 failed to get ${target_url}`); try { f(); } catch (e) { console.log(`33333 failed to get ${target_url}`); try { f(); } catch (e) { console.log(`4444444 failed to get ${target_url}`); try { f(); } catch (e) { console.log(`55555555 failed to get ${target_url}`); f();  } } } }
+    try { f(); } catch (e) { Console.log(`11111 failed to get ${target_url}`); Console.log(`22222 failed to get ${target_url}`); try { f(); } catch (e) { Console.log(`33333 failed to get ${target_url}`); try { f(); } catch (e) { Console.log(`4444444 failed to get ${target_url}`); try { f(); } catch (e) { Console.log(`55555555 failed to get ${target_url}`); f();  } } } }
     }
   else { throw new Error(`unsuppored verb ${verb}`); }
   }
@@ -268,20 +272,21 @@ async function start_journey({ site, browse_object, journey_number, globals, eve
   vConsoles.push(virtualConsole);
   let journey_context = null;
   virtualConsole.sendTo(
-    { log	: (...args) => { console.log(`log journey ${journey_number}  ${date_f()}`, ...args)}
-    , warn	: (...args) => { console.log(`log journey ${journey_number}  ${date_f()}`); console.log(...args)}
-    , error	: (...args) => { console.log(`log journey ${journey_number}  ${date_f()} file ${journey_context?.window_f().testing_flags?.file}`); console.log(...args)}
+    { log	: (...args) => { Console.log(`log journey ${journey_number}  ${date_f()}`, ...args)}
+    , warn	: (...args) => { Console.log(`log journey ${journey_number}  ${date_f()}`); Console.log(...args)}
+    , error	: (...args) => { Console.log(`log journey ${journey_number}  ${date_f()} file ${journey_context?.window_f().testing_flags?.file}`); Console.log(...args)}
     });
-  console.log(`navigating to ${url}`);
+  Console.log(`navigating to ${url}`);
   let cookie_jar = new jsdom.CookieJar();
   JSDOM.fromURL(url, jsdom_options(cookie_jar, resources, virtualConsole, {journey_xpromise}, () => { throw new Error(`onerror not implemented`) }))//, { beforeParse(window) { 
   .then(async dom => {
     dom.window.EventSource = es.EventSource;
     let navigation_xpromise = mk_external_promise(`journey ${journey_number}`);
-    journey_context = mk_journey_context({dom, cookie_jar, journey_number, site, path, resources, virtualConsole, journey_xpromise, globals, event_promises, event_data, request_id, log_stream_id, event_log});
+    let local_globals = mk_local_globals({globals, journey_number});
+    journey_context = mk_journey_context({dom, cookie_jar, journey_number, site, path, resources, virtualConsole, journey_xpromise, globals: local_globals, event_promises, event_data, request_id, log_stream_id, event_log});
     journey_xpromise = journey_context.journey_xpromise.promise;
     await await_page_load(dom);
-    dom.window.my_alert = (message) => { console.log(`journey ${journey_context.journey_number} fail due to alert ${message}`);; journey_context.journey_xpromise.reject(message); } // Fail with this message.
+    dom.window.my_alert = (message) => { Console.log(`journey ${journey_context.journey_number} fail due to alert ${message}`);; journey_context.journey_xpromise.reject(message); } // Fail with this message.
     journey_context.file = dom.window.testing_flags.file; 
     journey_context.window_f().testing_flags.suppress_navigation = true;
     journey_context.window_f().testing_flags.suppress_sound = true;
@@ -293,19 +298,28 @@ async function start_journey({ site, browse_object, journey_number, globals, eve
       window_api_object.my_alert = (message) => journey_context.journey_xpromise.reject(message); // Fail with this message.
       window_api_object.my_event_source = es.EventSource;
       } // Create new a new dom when a navigation event occurs.
-    else console.warn(`WARNING ${target_url} has no testing API object`);
+    else Console.warn(`WARNING ${target_url} has no testing API object`);
     journey_context.window_f().testing_api.navigate_away = (verb, path) => navigate_away(verb, path, journey_context); // Create new a new dom when a navigation event occurs.
-    //console.log(`journey_number=${journey_number} url=${url} file=${dom.window.testing_flags.file}`);
-    //console.log(`1111111 journey ${journey_number} wait for promise`);
+    //Console.log(`journey_number=${journey_number} url=${url} file=${dom.window.testing_flags.file}`);
+    //Console.log(`1111111 journey ${journey_number} wait for promise`);
     await dom.window.eventPromises.functionsAvailablePromise;
-    //console.log(`journey_number=${journey_number} functionsAvailable`);
+    //Console.log(`journey_number=${journey_number} functionsAvailable`);
     journey_context.dom_xpromise.promise.then(() => {
       dom.window.close();
-      //console.log(`journey_number=${journey_number} action="window closed"`);
+      //Console.log(`journey_number=${journey_number} action="window closed"`);
       });
     do_next_step(browse_object, journey_context).catch( error => journey_context.journey_xpromise.reject(error));
     });
   return journey_xpromise.promise;
+  }
+function mk_local_globals({globals, journey_number}) { // Make a copy of globals individualised to each journey.
+  assert(globals.server_instance_id, "must have server_instance_id");
+  assert(globals.test_instance_id, "must have test_instance_id");
+  let local_globals = {};
+  _.assign(local_globals, globals);
+  local_globals.test_instance_journey_id = `${globals.test_instance_id}${journey_number}`;
+  local_globals.server_instance_journey_id = `${globals.server_instance_id}${journey_number}`;
+  return local_globals;
   }
 async function do_next_step(step, journey_context, next_relp = "then") {
   const step_map = 
@@ -318,7 +332,7 @@ async function do_next_step(step, journey_context, next_relp = "then") {
     , "bus.step.wait"		: do_bus_step_wait
     , "bus.step.wait_external"	: do_bus_step_wait_external
     };
-  console.log(`journey ${journey_context.journey_number} step ${step.name} completed successfully at ${date_f()}`);
+  Console.log(`journey ${journey_context.journey_number} step ${step.name} completed successfully at ${date_f()}`);
   journey_context.event_log.push([ journey_context.journey_number, step.name, date_f()]);
   let relp = step.relps[next_relp];
   assert(relp && relp.length, `no next step for relationship ${next_relp} of step ${step.name}`);
@@ -326,13 +340,13 @@ async function do_next_step(step, journey_context, next_relp = "then") {
   assert(relp.length == 1, `too many next steps for relationship ${next_relp} of step ${step.name}`); // FIXME: is this correct????
   let next_step = first_relp(relp);
   if (_.has(next_step.attrs, "abort")) {
-    console.log(`aborting at step ${next_step.name}`)
+    Console.log(`aborting at step ${next_step.name}`)
     await do_bus_step_end_journey(next_step, journey_context);
     }
   else {
     let next_step_fn = step_map[next_step.type]
     assert(next_step_fn, `no function for ${next_step.type}`);
-    console.log(`journey ${journey_context.journey_number} step ${next_step.name} initiated at ${date_f()}`);
+    Console.log(`journey ${journey_context.journey_number} step ${next_step.name} initiated at ${date_f()}`);
     journey_context.step_xpromise.promise
     .then( () => next_step_fn(next_step, journey_context))
     .catch( error => journey_context.journey_xpromise.reject(error));
@@ -345,7 +359,7 @@ async function do_bus_guard(step, journey_context) {
   insert_data(journey_context);
   let result = dom_bool(journey_context.dom_f(),`boolean(${step.attrs.condition})`, journey_context); 
   let next_relp = result ? "then" : "then.otherwise";
-  //console.log(`guard result is ${next_relp} for step ${step.name} journey ${journey_context.journey_number}`);
+  //Console.log(`guard result is ${next_relp} for step ${step.name} journey ${journey_context.journey_number}`);
   do_next_step(step, journey_context, next_relp).catch( error => journey_context.journey_xpromise.reject(error));
   }
 async function do_empty_step(step, journey_context) {
@@ -356,13 +370,13 @@ async function do_bus_step_sub_journey(step, journey_context) {
   assert(step.relps.then.length, `no next step for bus.guard ${step.name}`);
   assert(step.relps["then.sub_journey"].length, `no sub_journey step for bus.guard ${step.name}`);
   let sub_journey = first_relp(step.relps["then.sub_journey"]);
-  console.log(`journey started sub-journey ${sub_journey.name} at step ${step.name} of journey ${journey_context.journey_number} ${date_f()}`);
+  Console.log(`journey started sub-journey ${sub_journey.name} at step ${step.name} of journey ${journey_context.journey_number} ${date_f()}`);
   do_next_step(sub_journey, journey_context).catch( error => journey_context.journey_xpromise.reject(error));
-  console.log(66666666);
+  Console.log(66666666);
   }
 async function do_bus_step_end_journey(step, journey_context) {
   if (journey_context.journey_stack.length > 0) {
-  console.log(8888888);
+  Console.log(8888888);
     let step = journey_context.journey_stack.pop();
     do_next_step(step, journey_context).catch( error => journey_context.journey_xpromise.reject(error) );
     }
@@ -370,7 +384,7 @@ async function do_bus_step_end_journey(step, journey_context) {
     delete journey_context.dom; // FIXME: close the window everywhere.
     journey_context.journey_xpromise.resolve();
     journey_context.dom_xpromise.resolve();
-    console.log(`journey ended with step ${step.name} of journey ${journey_context.journey_number} ${date_f()}`);
+    Console.log(`journey ended with step ${step.name} of journey ${journey_context.journey_number} ${date_f()}`);
     }
   }
 async function do_bus_step_browse_url(step, journey_context) {
@@ -391,46 +405,52 @@ async function do_bus_step_interact(step, journey_context) {
     let name_and_expression = step.attrs.setvar.split(/=(.*)/);
     let name = name_and_expression[0].trim();
     let expression = name_and_expression[1];
-    //console.log(`setting ${name} to ${expression}`);
+    //Console.log(`setting ${name} to ${expression}`);
     journey_context.vars[name] = dom_string(journey_context.dom_f(), expression, journey_context);
     journey_context.dirty = true;
     echo(journey_context, step, step.attrs.echo);
     }
   let click_fn = async () => {
-    await await_dom_elt(step.attrs.click, journey_context, 10000, `could not find ${step.name} journey ${journey_context.journey_number} click element `, () => console.log(`dumping ${step.name} journey ${journey_context.journey_number} ${journey_context.dom_f().serialize()}`) );
+    await await_dom_elt(step.attrs.click, journey_context, 10000, `could not find ${step.name} journey ${journey_context.journey_number} click element `, () => Console.log(`dumping ${step.name} journey ${journey_context.journey_number} ${journey_context.dom_f().serialize()}`) );
     let document = journey_context.document_f();
     element = document.evaluate(step.attrs.click, document, null, journey_context.window_f().XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-    if (!element) console.log(`step ${step.name} journey ${journey_context.journey_number} dom ${journey_context.dom_f().serialize()}`);
-    //console.log(`journey_context.window_f().XPathResult.FIRST_ORDERED_NODE_TYPE ${journey_context.window_f().XPathResult.FIRST_ORDERED_NODE_TYPE}`);
-    //console.log(`step.attrs.click ${step.attrs.click}`);
-    //console.log(`journey_context.file ${journey_context.file}`);
-    console.log(`clicking ${step.attrs.click} of ${journey_context.file} from ${journey_context.path} for step ${step.name} journey ${journey_context.journey_number}`)
+    if (!element) Console.log(`step ${step.name} journey ${journey_context.journey_number} dom ${journey_context.dom_f().serialize()}`);
+    //Console.log(`journey_context.window_f().XPathResult.FIRST_ORDERED_NODE_TYPE ${journey_context.window_f().XPathResult.FIRST_ORDERED_NODE_TYPE}`);
+    //Console.log(`step.attrs.click ${step.attrs.click}`);
+    //Console.log(`journey_context.file ${journey_context.file}`);
+    Console.log(`clicking ${step.attrs.click} of ${journey_context.file} from ${journey_context.path} for step ${step.name} journey ${journey_context.journey_number}`)
     
-    //console.log(`before click ${JSON.stringify(journey_context.step_xpromise.promise)}`);
-    //promiseState(journey_context.step_xpromise.promise).then(state => console.log(state)); 
+    //Console.log(`before click ${JSON.stringify(journey_context.step_xpromise.promise)}`);
+    //promiseState(journey_context.step_xpromise.promise).then(state => Console.log(state)); 
     element.click();
-    //console.log(`after click ${JSON.stringify(journey_context.step_xpromise.promise)}`);
-    //promiseState(journey_context.step_xpromise.promise).then(state => console.log(state)); 
+    //Console.log(`after click ${JSON.stringify(journey_context.step_xpromise.promise)}`);
+    //promiseState(journey_context.step_xpromise.promise).then(state => Console.log(state)); 
     }
   let last_action_promise = Promise.resolve();
   for (let i = 0; i < count; i ++) { 
     insert_data(journey_context);
     if (step.attrs.echo) echo(journey_context, step, step.attrs.echo);
-    console.log(`action ${i+1} of ${count} for step ${step.name} journey ${journey_context.journey_number}`);
+    Console.log(`action ${i+1} of ${count} for step ${step.name} journey ${journey_context.journey_number}`);
     last_action_promise = last_action_promise.then(() => delay_after(click_fn, 100)); 
     }
-  last_action_promise.then(() => {
+  last_action_promise
+  .then(() => {
     if (step.attrs.clear) { 
       element.value = '';
       }
     if (step.attrs.enter) { 
       insert_data(journey_context);
       element.value = dom_string(journey_context.dom_f(), step.attrs.enter, journey_context); // Enter string value of the xpath.
-      //console.log(`about the enter ${element.value} with type ${typeof element.value}`);
+      //Console.log(`about the enter ${element.value} with type ${typeof element.value}`);
       var event = new (journey_context.window_f().KeyboardEvent)("keyup"); // Fire any keyup events.
       element.dispatchEvent(event);
       }
     do_next_step(step, journey_context).catch( error => journey_context.journey_xpromise.reject(error)); 
+    })
+  .catch(err => {
+    console.log(`journey ${journey_context.journey_number} error`, err);
+    console.log(`${journey_context.dom_f().serialize()}`);
+    journey_context.journey_xpromise.reject(err);
     });
   }
 async function await_dom_elt(xpath, journey_context, timeout, error_message, debug) { 
@@ -438,7 +458,7 @@ async function await_dom_elt(xpath, journey_context, timeout, error_message, deb
   }
 function date_f() { return (new Date()).toString().substring(0, 24); }  
 async function do_bus_step_wait(step, journey_context) {
-  console.log(`jounrney ${journey_context.journey_number} bus.step.wait initiated`);
+  Console.log(`jounrney ${journey_context.journey_number} bus.step.wait initiated`);
   assert((step.attrs.condition || step.attrs.event) && ((!step.attrs.condition) || (!step.attrs.event)), `condition XOR event required for bus.step.wait ${step.name}`);
   assert(step.attrs.timeout && step.attrs.timeout != NaN, `timeout required for bus.step.wait step ${step.name} journey ${journey_context.journey_number}`);
   let timeout = parseInt(step.attrs.timeout);
@@ -447,7 +467,7 @@ async function do_bus_step_wait(step, journey_context) {
     }
   if (step.attrs.echo) echo(journey_context, step, step.attrs.echo);
   if (step.attrs.condition) {
-    console.log(`bus.step.wait has condition ${step.attrs.condition}`);
+    Console.log(`bus.step.wait has condition ${step.attrs.condition}`);
     let xpath = `(${step.attrs.condition})`;
     if (step.attrs["condition.1"]) {
       xpath = `${xpath} or (${step.attrs["condition.1"]})`
@@ -459,20 +479,20 @@ async function do_bus_step_wait(step, journey_context) {
       xpath = `${xpath} or (${step.attrs["condition.3"]})`
     }
     if (step.attrs["condition.4"]) throw new Error('not implemented');
-    console.log(`waiting for ${xpath} for step ${step.name} of journey ${journey_context.journey_number} at ${date_f()}`);
+    Console.log(`waiting for ${xpath} for step ${step.name} of journey ${journey_context.journey_number} at ${date_f()}`);
     // FIXME we need to update the data before each attempt - probably means only inserting if we need to :(
-    //console.log(`data insertion started ${xpath} for step ${step.name} journey ${journey_context.journey_number} at ${date_f()}`);
+    //Console.log(`data insertion started ${xpath} for step ${step.name} journey ${journey_context.journey_number} at ${date_f()}`);
     insert_data(journey_context);
-    //console.log(`data insertion completed ${xpath} for step ${step.name} journey ${journey_context.journey_number} at ${date_f()}`);
+    //Console.log(`data insertion completed ${xpath} for step ${step.name} journey ${journey_context.journey_number} at ${date_f()}`);
     let start = new Date();
     await mandatory_wait(
         () => dom_bool(journey_context.dom_f(), xpath, journey_context), 
         timeout, 
         `wait condition timed out for step ${step.name} journey ${journey_context.journey_number} at ${date_f()} ${journey_context.request_id} ${journey_context.log_stream_id}`,
-        () => { console.log(`request ${journey_context.request_id} step ${step.name} journey ${journey_context.journey_number} started at ${start.toString().substring(0, 24)} and timed out after ${timeout} at ${date_f()}  ${journey_context.dom_f().serialize()} ${journey_context.log_stream_id}`) });//debug code
-    console.log(`wait fulfilled for ${xpath} for step ${step.name} journey ${journey_context.journey_number} at ${date_f()}`);
+        () => { Console.log(`request ${journey_context.request_id} step ${step.name} journey ${journey_context.journey_number} started at ${start.toString().substring(0, 24)} and timed out after ${timeout} at ${date_f()}  ${journey_context.dom_f().serialize()} ${journey_context.log_stream_id}`) });//debug code
+    Console.log(`wait fulfilled for ${xpath} for step ${step.name} journey ${journey_context.journey_number} at ${date_f()}`);
     if (step.attrs.echo) echo(journey_context, step, step.attrs.echo);
-    if (step.attrs.dump == "Y") console.log(`dumping ${step.name} journey ${journey_context.journey_number} ${journey_context.dom_f().serialize()}`);
+    if (step.attrs.dump == "Y") Console.log(`dumping ${step.name} journey ${journey_context.journey_number} ${journey_context.dom_f().serialize()}`);
     }
   else { // event
     let timeout_start = new Date();
@@ -481,41 +501,41 @@ async function do_bus_step_wait(step, journey_context) {
         () => journey_context.window_f().eventPromises.hasOwnProperty(promiseName), 
         timeout,
         `could not find ${promiseName} for journey ${journey_context.journey_number} step ${step.name}`,
-        () => console.log(`promises ${JSON.stringify(journey_context.window_f().eventPromises)} file ${journey_context.file} result ${journey_context.window_f().eventPromises[promiseName]}`),
+        () => Console.log(`promises ${JSON.stringify(journey_context.window_f().eventPromises)} file ${journey_context.file} result ${journey_context.window_f().eventPromises[promiseName]}`),
         );
     let promise = journey_context.window_f().eventPromises[promiseName];
-    //console.log("promises", JSON.stringify(journey_context.window_f().eventPromises));
+    //Console.log("promises", JSON.stringify(journey_context.window_f().eventPromises));
     // FIXME time the promise out using the remainder of the time.
     assert(promise, `no promise found named ${promiseName}`);
-    console.log(`journey ${journey_context.journey_number} step ${step.name} waiting for promise ${promiseName}`);
+    Console.log(`journey ${journey_context.journey_number} step ${step.name} waiting for promise ${promiseName}`);
     await promise;
     journey_context.last_event = step.attrs.event;
-    console.log(`journey ${journey_context.journey_number} step ${step.name} promise ${promiseName} resolved`);
+    Console.log(`journey ${journey_context.journey_number} step ${step.name} promise ${promiseName} resolved`);
     }
   if (step.attrs.setvar) {
     let name_and_expression = step.attrs.setvar.split(/=(.*)/);
     let name = name_and_expression[0].trim();
     let expression = name_and_expression[1];
-    //console.log(`setting ${name} to ${expression}`);
+    //Console.log(`setting ${name} to ${expression}`);
     journey_context.vars[name] = dom_string(journey_context.dom_f(), expression, journey_context);
     journey_context.dirty = true;
     echo(journey_context, step, step.attrs.echo);
     }
   if (step.attrs.echo) {
-    //console.log(`echoing ${step.attrs.echo}`);
+    //Console.log(`echoing ${step.attrs.echo}`);
     insert_data(journey_context);
     echo(journey_context, step, step.attrs.echo);
     }
   do_next_step(step, journey_context).catch( error => journey_context.journey_xpromise.reject(error));
   }
 async function do_bus_event(step, journey_context) { 
-  console.log(`creating business event ${step.name} ${journey_context.journey_number} at ${date_f()}`)
+  Console.log(`creating business event ${step.name} ${journey_context.journey_number} at ${date_f()}`)
   assert((!step.attrs.data ^ !step.attrs.count), "must specify data OR count");
   let event_data;
   if (step.attrs.data) {
     insert_data(journey_context);
     event_data = dom_string(journey_context.dom_f(), step.attrs.data, journey_context);
-    console.log(`journey ${journey_context.journey_number} step ${step.name} has event data ${event_data} at ${date_f()}`)
+    Console.log(`journey ${journey_context.journey_number} step ${step.name} has event data ${event_data} at ${date_f()}`)
     resolveEventPromise(step.name, journey_context, event_data);  // Resolve immediately.
     } 
   else {
@@ -528,7 +548,7 @@ function resolveEventPromise(name, journey_context, data, aggregator = _.identit
   journey_context.event_data[name] = aggregator(data, journey_context.event_data[name]);
   if (!journey_context.event_promises[name]) journey_context.event_promises[name] = mk_external_promise();
   if (is_complete(journey_context.event_data[name]))  {
-    console.log(`resolved business event ${name} ${journey_context.journey_number} at ${date_f()}`);
+    Console.log(`resolved business event ${name} ${journey_context.journey_number} at ${date_f()}`);
     journey_context.event_promises[name].resolve();
     journey_context.dirty = true;
     }
@@ -647,9 +667,9 @@ async function do_bus_step_wait_external(step, journey_context) {
   assert(step.relps.depends.length == 1, "external wait requires exactly one business event dependency");
   let dep = first_relp(step.relps.depends);
   assert(dep.type == "bus.event", "business event dependency must be of type bus.event");
-  console.log(`waiting for external step ${step.name} ${journey_context.journey_number} to be resolved. at ${date_f()}`);
+  Console.log(`waiting for external step ${step.name} ${journey_context.journey_number} to be resolved. at ${date_f()}`);
   getEventPromise(journey_context, dep.name).then(data => {
-    console.log(`external step ${step.name} ${journey_context.journey_number} resolved. at ${date_f()}`);
+    Console.log(`external step ${step.name} ${journey_context.journey_number} resolved. at ${date_f()}`);
     do_next_step(step, journey_context).catch( error => journey_context.journey_xpromise.reject(error));
      });
   }
@@ -659,14 +679,14 @@ function getEventPromise(journey_context, name) {
   }
 function echo(journey_context, step, xpath_query) {
   // FIXME standardise log output via function
-  console.log(`journey_number=${journey_context.journey_number} step=${step.name} file=${journey_context.file} query_result=${dom_string(journey_context.dom_f(), xpath_query, journey_context)}`);
+  Console.log(`journey_number=${journey_context.journey_number} step=${step.name} file=${journey_context.file} query_result=${dom_string(journey_context.dom_f(), xpath_query, journey_context)}`);
   }
 function process_journey_xml(xml) {
   sx.process_xml(xml);
   exported.raw_json = sx.raw_json;
   exported.root_oid = get_root();
   set_graph(exported.root_oid);
-  //console.log(JSON.stringify(exported.graph));
+  //Console.log(JSON.stringify(exported.graph));
   }
 function get_root() {
   // Find the object that starts the journey.  It is the only object that is not the target of a relationship.
@@ -703,21 +723,21 @@ function do_fetch(journey_context, url, opts, retry_timeout = 1, max_retry_timeo
   let resolver = undefined;
   let rejector = undefined;
   let result = new Promise(function(resolve, reject) { resolver = resolve; rejector = reject; });
-  console.log(`journey ${journey_context.journey_number} fetching ${retry_timeout} ${date_f()}`);
+  Console.log(`journey ${journey_context.journey_number} fetching ${retry_timeout} ${date_f()}`);
   fetch(url, opts)
   .then( response => { 
-    console.log(`journey ${journey_context.journey_number} fetched ${url}`); 
+    Console.log(`journey ${journey_context.journey_number} fetched ${url}`); 
     resolver(response);
     })
   .catch( err => {
-    console.error(`journey ${journey_context.journey_number} fetch error`);
-    console.error(`journey ${journey_context.journey_number} fetch error data ${err instanceof TypeError && err.message === 'fetch failed' && retry_timeout <= max_retry_timeout} ${err instanceof TypeError} ${err.message === 'fetch failed'} ${retry_timeout <= max_retry_timeout}`);
+    Console.error(`journey ${journey_context.journey_number} fetch error`);
+    Console.error(`journey ${journey_context.journey_number} fetch error data ${err instanceof TypeError && err.message === 'fetch failed' && retry_timeout <= max_retry_timeout} ${err instanceof TypeError} ${err.message === 'fetch failed'} ${retry_timeout <= max_retry_timeout}`);
     if (err instanceof TypeError && err.message === 'fetch failed' && retry_timeout <= max_retry_timeout) {
-      console.error(`journey ${journey_context.journey_number} retry after  network error for ${url}`);
+      Console.error(`journey ${journey_context.journey_number} retry after  network error for ${url}`);
       setTimeout(() => {
         do_fetch(journey_context, url, opts, retry_timeout * 10, max_retry_timeout)
         .then(result => {
-          console.log(`journey ${journey_context.journey_number} fetch retry result ${result} ${JSON.stringify(result)}`); 
+          Console.log(`journey ${journey_context.journey_number} fetch retry result ${result} ${JSON.stringify(result)}`); 
           resolver(result);
           })
         .catch(err => rejector(err));
@@ -725,13 +745,13 @@ function do_fetch(journey_context, url, opts, retry_timeout = 1, max_retry_timeo
         retry_timeout);
       }
     else {
-      console.error(`journey ${journey_context.journey_number} reject after network error for ${url} ${opts}`);
+      Console.error(`journey ${journey_context.journey_number} reject after network error for ${url} ${opts}`);
       setTimeout(() => rejector(err), 10000);  // Give the virtual console some time to write the errors.
       }
     })
   .catch( err => {
-    console.error(`journey ${journey_context.journey_number} fetch error handling failed`);
-    console.error(`journey ${journey_context.journey_number} do_fetch`, err);
+    Console.error(`journey ${journey_context.journey_number} fetch error handling failed`);
+    Console.error(`journey ${journey_context.journey_number} do_fetch`, err);
     setTimeout(() => rejector(err), 10000);  // Give the virtual console some time to write the errors.
     });
   return result;
